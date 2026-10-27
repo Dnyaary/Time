@@ -16,6 +16,17 @@ Time runs hidden on Windows and counts the time the computer is really in use â€
   <img src="docs/img/panel-app.png" width="300" alt="Detail of one app in the light theme: today, last 14 days, week and month">
 </p>
 
+## Why Time?
+
+There are many screen time trackers. Time is for people who want to see where their time goes **without handing that data to anyone**:
+
+- **Nothing leaves your network.** No account, no cloud, no telemetry. The data are plain CSV files on your own PC.
+- **Your phone is the dashboard.** Open a link on the same Wi-Fi and see your day, without installing anything on the phone.
+- **Several PCs, one link.** Your desktop, laptop and office PCs find each other on the network and add up in a single dashboard.
+- **It stays out of the way.** No tray icon and no pop-ups: it runs hidden and only shows up when you press the shortcut.
+- **Private by design.** Window titles are never saved, and you decide how apps are grouped.
+- **One file.** A single `.exe` that installs itself; open source under the MIT license.
+
 ## Features
 
 - **Real usage time:** counts while the PC is in use and pauses after a while with no mouse or keyboard input. Each moment is credited to the app in the foreground.

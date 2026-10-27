@@ -16,6 +16,17 @@ O Time roda escondido no Windows e conta o tempo em que o computador está realm
   <img src="docs/img/painel-programa.png" width="300" alt="Detalhe de um programa no tema claro: hoje, 14 dias, semana e mês">
 </p>
 
+## Por que o Time?
+
+Existem muitos programas de tempo de tela. O Time é para quem quer ver para onde vai o tempo **sem entregar esses dados para ninguém**:
+
+- **Nada sai da sua rede.** Sem conta, sem nuvem, sem telemetria. Os dados são arquivos CSV simples no seu próprio PC.
+- **O celular é o painel.** Abra um link na mesma rede Wi-Fi e veja o seu dia, sem instalar nada no celular.
+- **Vários PCs, um link só.** O PC de casa, o notebook e os PCs do escritório se acham na rede e aparecem somados num painel só.
+- **Não atrapalha.** Sem ícone na bandeja e sem janelas pulando na tela: roda escondido e só aparece quando você aperta o atalho.
+- **Privado de verdade.** O título das janelas nunca é salvo, e é você quem decide como os programas são agrupados.
+- **Um arquivo só.** Um único `.exe` que se instala sozinho; código aberto, sob a licença MIT.
+
 ## O que ele faz
 
 - **Tempo de uso real:** conta enquanto o PC está em uso e pausa depois de um tempo sem atividade. Cada programa entra na conta de quem está em primeiro plano.
