@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- Nome do executável gerado: Time.exe -->
+    <AssemblyName>Time</AssemblyName>
+
+    <!-- Versão do programa (Propriedades > Detalhes). Suba junto com a tag da release: v1.0.0 -->
+    <Version>1.0.0</Version>
+
+    <!-- Ícone do .exe: o genérico do Windows, igual ao da janela -->
+    <ApplicationIcon>icone.ico</ApplicationIcon>
+
+    <!-- Informações que aparecem em Propriedades > Detalhes do .exe -->
+    <AssemblyTitle>Time</AssemblyTitle>
+    <Product>Time</Product>
+    <Company>Time</Company>
+    <Authors>Daniel 'dnyaary' Carvalho</Authors>
+    <Copyright>Copyright (c) 2026 Daniel 'dnyaary' Carvalho - MIT License</Copyright>
+    <Description>Contador de tempo de uso real do PC - by Daniel 'dnyaary' Carvalho (instagram.com/dnyaary)</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <NeutralLanguage>pt-BR</NeutralLanguage>
+  </PropertyGroup>
+
+</Project>

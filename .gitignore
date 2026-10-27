@@ -1,0 +1,26 @@
+# Build
+bin/
+obj/
+publish/
+
+# IDEs
+.vs/
+.idea/
+*.user
+*.suo
+
+# Dados locais do programa (nunca versionar: contêm código de acesso e histórico)
+config.txt
+pcs.txt
+atividade_diaria.csv
+apps_diario.csv
+horas_diario.csv
+atividade_diaria.txt
+categorias.txt
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Dados de quem testou localmente
+*.novo.csv
