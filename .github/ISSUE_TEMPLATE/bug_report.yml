@@ -1,0 +1,50 @@
+name: Bug report
+description: Something in Time is not working as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting! You can write in English or Portuguese.
+        Please don't paste your access code (the part after `?k=` in the link).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What you did, what you expected and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the full window (Ctrl+Shift+Alt+F2, then 1)
+        2. ...
+  - type: dropdown
+    id: where
+    attributes:
+      label: Where?
+      options:
+        - Window on the PC
+        - Dashboard on the phone
+        - Several PCs / discovery
+        - Install / Start with Windows
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Time version
+      placeholder: "e.g. 1.1.0 (Time.exe → Properties → Details)"
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version and phone browser
+      placeholder: "e.g. Windows 11 24H2, Chrome on Android"
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots or anything else
+      description: Hide names or data you don't want to make public.

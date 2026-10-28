@@ -35,16 +35,24 @@ Existem muitos programas de tempo de tela. O Time é para quem quer ver para ond
 - **Últimos 14 dias:** gráfico de linha com a média do período. A linha é verde na base e vai ficando âmbar e vermelha conforme sobe.
 - **Semana e mês:** tempo total, média por dia de uso e comparação com a semana e o mês anteriores.
 - **Grupos:** separe os programas em grupos (Trabalho, Redes sociais, Vídeo e música…) no `categorias.txt` e veja o tempo de cada grupo.
+- **Foco:** marque grupos como produtivo ou distração (`[Trabalho | produtivo]`) e veja, no painel e na janela, quanto do dia foi para cada um.
+- **Resumo do dia já mastigado:** "10h ligado: 3h produtivo, 3h de distração, 2h neutro e 2h ligado sem uso", com uma barra e a porcentagem de cada parte.
+- **Resumo da semana e do mês:** qualquer semana ou mês do histórico, com setas para voltar — a mesma frase para o período inteiro, uma barra por dia (ou por semana), a comparação com a semana anterior, o dia mais produtivo, o programa mais usado e a maior distração.
+- **Pausar:** um botão na janela para a contagem por 15 minutos, 1 hora ou até retomar — para um intervalo, ou quando outra pessoa vai usar o PC.
+- **Tempo parado:** conta também quanto tempo o PC ficou ligado sem ninguém usando ("Ligado sem uso"), separado do tempo de uso real.
+- **Firme com a rede instável:** se um PC para de responder, o painel mantém os últimos dados dele e marca como offline, então o total não cai e volta. PC em duas redes mostra um link para cada.
 - **Detalhe de um programa:** toque num programa para ver o histórico dele — hoje, 14 dias, semana e mês.
 - **Tema claro e escuro:** segue o celular, com um botão para trocar.
 - **Dias anteriores:** abaixo do gráfico, só o resumo de cada dia (data e tempo). Tocando em um dia, abre o gráfico com aquele dia marcado e **todos** os programas usados nele.
-- **Relatório:** baixe o histórico (dias, programas ou horas) em planilhas CSV direto do painel.
+- **Relatório:** baixe o resumo da semana ou do mês (dia a dia e por programa, com produtivo, distração e tempo parado) ou o histórico completo (dias, programas ou horas) em planilhas CSV direto do painel.
 - **Vários PCs:** cada PC roda o próprio Time; um deles vira o principal e soma os outros. A lista mostra o total e o tempo por computador — tocar em um PC abre só o que ele está usando.
 - **Descoberta automática:** os Time ligados na mesma rede se acham sozinhos (UDP 8788). É só digitar o código do outro PC uma vez.
 - **Janela discreta:** o atalho abre só uma janelinha com o nome "Time" e um botão de minimizar (minimizar esconde de novo). As informações completas ficam num segundo atalho. O próprio Time também entra na lista de programas, então dá para ver no painel quando você está nele.
 - **Nada de nuvem:** os dados ficam em `C:\Program Files\Time`, no seu PC. O painel só responde na rede local e exige um código de acesso.
 
 ## Instalação (Windows 10/11, 64 bits)
+
+> **O navegador pode avisar sobre o download.** Edge e Chrome mostram "O Time.exe não é baixado com frequência" para programas novos sem assinatura digital. No Edge: **⋯ → Manter → Mostrar mais → Manter assim mesmo**. No Chrome: **Manter**. Para conferir que o arquivo é o publicado aqui, compare com o `Time.exe.sha256` da mesma release (`certutil -hashfile Time.exe SHA256`), ou compile você mesmo a partir do código.
 
 1. Baixe o `Time.exe` na página de [Releases](../../releases/latest) (arquivo único, autocontido — não precisa instalar .NET).
 2. Rode de onde baixou. **Nada aparece na tela** — ele fica escondido.
@@ -85,7 +93,11 @@ A cada push na `main`, o GitHub Actions também compila e deixa o `Time.exe` par
 
 | Arquivo | Responsabilidade |
 |---|---|
-| `Program.cs` | contagem, janela, atalho global, firewall, dados, painel e PCs remotos |
+| `Program.cs` | ponto de entrada: instância única e instalação em Program Files |
+| `Contador.cs` | contagem do tempo, janelas e iniciar com o Windows |
+| `Contador.*.cs` | as outras partes do contador: link do painel e firewall (`Painel`), PCs remotos (`Remotos`), dados do painel e CSV (`Api`), regras e foco (`Regras`), pausa (`Pausa`), arquivos de dados (`Dados`) |
+| `Janelas.cs` | a janela completa e a janela mínima |
+| `Modelos.cs`, `AtalhoGlobal.cs`, `Idioma.cs` | tipos de dados, atalho global, textos em português/inglês |
 | `Api.cs` | servidor HTTP e toda a página do painel (HTML/CSS/JS embutidos) |
 | `Descoberta.cs` | descoberta dos outros PCs na rede (UDP 8788, HMAC) |
 | `Time.csproj` | projeto .NET 10 WinForms, ícone e metadados |
@@ -105,8 +117,31 @@ Tudo em `C:\Program Files\Time`:
 | `categorias.txt` | regras que agrupam programas |
 | `config.txt` | porta, código de acesso e estado do firewall |
 | `pcs.txt` | outros PCs do painel |
+| `pcs_dados.json` | últimos dados recebidos de cada um desses PCs (usados enquanto um está offline) |
 
 Copiar essa pasta é o backup completo. Os arquivos são texto simples (CSV), legíveis por qualquer coisa.
+
+### Regras (`categorias.txt`)
+
+Uma regra por linha, no formato `tipo: texto = Nome | tolerância`:
+
+```text
+site: YouTube = YouTube | 600        # só no título da aba do navegador; conta até 10 min parado
+programa: CorelDRW = CorelDRAW       # começo do nome do processo (sem .exe)
+titulo: Nota fiscal = Notas          # título de qualquer janela
+```
+
+Uma linha `[Grupo]` agrupa as regras de baixo, e a marca opcional alimenta a barra de foco:
+
+```text
+[Trabalho | produtivo]
+programa: devenv = Visual Studio
+
+[Redes sociais | distração]
+site: Instagram = Instagram
+```
+
+A primeira regra que bater vence; o que não bater em nenhuma conta como **"Outros"**. O arquivo recarrega sozinho alguns segundos depois de salvo.
 
 ## Privacidade
 
@@ -121,7 +156,7 @@ Copiar essa pasta é o backup completo. Os arquivos são texto simples (CSV), le
 
 - Só Windows (WinForms + APIs do Windows).
 - O painel precisa do PC ligado, do Time rodando e do celular na mesma rede.
-- Não funciona por VPN/dados móveis por padrão; para acessar de fora seria preciso abrir a porta no roteador (não recomendado).
+- Fora da rede ele não abre. Nunca abra a porta no roteador.
 - Sem instalador e sem assinatura digital.
 
 ## Licença

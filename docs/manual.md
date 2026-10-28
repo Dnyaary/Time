@@ -53,6 +53,7 @@ e sem conta — veja [Painel no celular](#painel-no-celular-rede-local).
 | `categorias.txt` | A lista do que contar e como nomear. Você edita este. |
 | `config.txt` | Porta e código de acesso do painel do celular. |
 | `pcs.txt` | Outros PCs do painel, um por linha: `nome; codigo; maquina; ip:porta`. |
+| `pcs_dados.json` | Últimos dados recebidos de cada PC do `pcs.txt`, usados enquanto ele está offline. |
 
 O caminho é sempre `C:\Program Files\Time`. Se a pasta não existir, o programa
 cria na primeira execução — e essa primeira execução **pede uma elevação (UAC)
@@ -67,9 +68,12 @@ Se você recusar o UAC, o programa continua funcionando em
 ### Colunas do `atividade_diaria.csv`
 
 ```
-Data;Usuario;Maquina;Primeira atividade;Ultima atividade;Tempo ativo;Segundos;Limite inatividade (s)
-2026-10-22;daniel;PC-TI;08:12:40;17:41:05;06:48:12;24492;30
+Data;Usuario;Maquina;Primeira atividade;Ultima atividade;Tempo ativo;Segundos;Limite inatividade (s);Parado (s)
+2026-10-22;daniel;PC-TI;08:12:40;17:41:05;06:48:12;24492;30;3120
 ```
+
+`Parado (s)` é o tempo em que o PC ficou ligado, com o Time rodando, mas sem
+ninguém usando. Não entra no tempo ativo, e a pausa não conta como parado.
 
 ### Colunas do `apps_diario.csv`
 
@@ -142,6 +146,31 @@ O `categorias.txt` novo já vem com grupos (Redes sociais, Vídeo e música,
 Comunicação, Inteligência artificial, Trabalho, Compras e Jogos). Os grupos não
 ficam gravados no histórico: mudou o grupo de um programa, o painel já soma os
 dias antigos no grupo novo.
+
+**Foco: produtivo ou distração (opcional):**
+
+No fim do nome do grupo, `| produtivo` ou `| distração` diz o que aquele tempo
+significa para você. O painel mostra a barra de **Foco** (quanto do dia foi
+produtivo, distração e neutro) e a janela mostra a linha
+"Produtivo 5h 10min · Distração 1h 20min".
+
+```
+[Trabalho | produtivo]
+programa: devenv = Visual Studio
+
+[Redes sociais | distração]
+site: Instagram = Instagram
+
+[Comunicação]
+programa: WhatsApp = WhatsApp
+```
+
+Grupo sem marca (como Comunicação acima) e programa sem grupo contam como
+**neutro**. O arquivo padrão já vem com Trabalho e Inteligência artificial como
+produtivos, e Redes sociais, Vídeo e música, Compras e Jogos como distração.
+Quem decide é você: troque a marca à vontade — o painel recalcula todos os dias.
+Se nenhum grupo tiver marca, os grupos com os nomes padrão usam essa marcação
+padrão; use `| neutro` para deixar um grupo de fora.
 
 **Tolerância (opcional, no fim da linha):**
 
@@ -232,7 +261,16 @@ janela completa** antes de rodar o `.exe` novo — ele se instala por cima.
   primeira; qualquer outra tecla no meio cancela a sequência.
 - **X da janela completa:** encerra o programa, salvando os dados. Para deixar
   rodando, use o atalho em vez do X. A janela mínima não tem X.
+- **Linha de estado:** **● Contando** quando o PC está em uso, **○ Sem uso agora**
+  quando passou a tolerância sem mexer no mouse/teclado, e **❚❚ Pausado** durante
+  uma pausa. Abaixo, **Ligado sem uso** mostra quanto tempo o PC ficou ligado hoje
+  sem ninguém usando (aparece a partir de 1 minuto; no painel também).
 - **Botões da janela:**
+  - **Pausar:** para a contagem por **15 minutos**, **1 hora** ou **até eu
+    retomar**, mesmo com o PC em uso — para um intervalo, ou quando outra pessoa
+    vai usar o PC. Durante a pausa o botão vira **Retomar** e o painel do celular
+    mostra "Pausado até 15:30". A pausa não fica gravada: fechar o Time ou
+    reiniciar o PC volta a contar.
   - **Pasta dos dados:** abre `C:\Program Files\Time` no Explorador.
   - **Categorias:** abre o `categorias.txt` no Bloco de Notas.
   - **Iniciar com o Windows:** liga/desliga a inicialização automática.
@@ -262,6 +300,11 @@ uma página na rede local.
 
 No próprio PC, o mesmo painel abre em `http://localhost:8787/?k=SEU-CODIGO`.
 
+Se o PC estiver em **duas redes** (cabo e Wi-Fi, ou duas redes na empresa), a
+janela mostra um segundo link, **"Na outra rede"**. Use o link da rede em que o
+celular (ou o outro PC) está. Placas virtuais (Hyper-V, WSL, VirtualBox, VMware)
+são ignoradas.
+
 O fim do link (`?k=...`) é o **código de acesso**. Quem abrir o endereço sem ele
 vê apenas a tela de código; os dados só aparecem com o código certo.
 
@@ -270,8 +313,12 @@ vê apenas a tela de código; os dados só aparecem com o código certo.
 - Tempo de **hoje** e o período (primeira e última atividade).
 - **Por PC**: quanto cada computador usou hoje e se está online. Toque em um PC
   para ver só o que ele está usando.
+- **Resumo do dia**: a frase pronta, por exemplo "10h ligado: 3h produtivo, 3h
+  de distração, 2h neutro e 2h ligado sem uso", com uma barra e a porcentagem de
+  cada parte: produtivo (verde), distração (vermelho), neutro (cinza) e ligado sem
+  uso (listrado). Sem grupos marcados, aparece só "em uso" e "sem uso".
 - **Por grupo**: o tempo de hoje somado por grupo do `categorias.txt` (só aparece
-  quando há grupos).
+  quando há grupos). A barra de cada grupo segue a cor do foco.
 - **Top programas** de hoje, com uma barra fina do tamanho de cada um. Toque em um
   programa para abrir o **detalhe dele**: o tempo de hoje, o gráfico dos últimos 14
   dias, a semana, o mês e os dias em que foi usado.
@@ -283,10 +330,21 @@ vê apenas a tela de código; os dados só aparecem com o código certo.
 - **Esta semana** e **Este mês**: tempo total desde segunda-feira e desde o dia 1º,
   com a média por dia de uso e a comparação com o mesmo trecho da semana e do mês
   anteriores (por exemplo, "▲ 12% que a semana passada").
+- **Resumo da semana / do mês**: as abas **Semana** (de segunda a domingo) e
+  **Mês** escolhem o período, e as setas **‹ ›** andam para trás e para a frente —
+  dá para ver qualquer semana ou mês do histórico (o mês retrasado, por exemplo).
+  Na segunda-feira ele já abre na semana que acabou de fechar. Mostra a frase do
+  período inteiro, uma barra por dia na semana ou por semana no mês (toque para
+  abrir), a comparação com o período anterior — no período em andamento, até o
+  mesmo dia — e os destaques: dia mais produtivo, programa mais usado, maior
+  distração e média por dia de uso.
 - **Dias anteriores**: abaixo do gráfico, o resumo de cada dia (data e tempo
   total, só isso). Toque em um dia para abrir o gráfico com aquele dia marcado e
   a lista completa dos programas usados nele; **← Voltar** retorna para hoje.
-- **Relatório**: os botões **Dias**, **Programas** e **Horas** baixam o histórico em
+- **Relatório**: o botão **Semana** (ou **Mês**) baixa o resumo do período que está
+  aberto no resumo acima: um dia por linha com ligado, em uso, produtivo,
+  distração, neutro e sem uso, o total do período e cada programa com grupo e foco.
+  Os botões **Dias**, **Programas** e **Horas** baixam o histórico em
   planilhas CSV, para abrir no Excel. Na visão de todos os PCs, vem o histórico de
   todos os PCs da lista; dentro de um PC, só daquele PC.
 - **Adicionar ou remover PCs**, no fim da página, para juntar os outros computadores.
@@ -346,8 +404,10 @@ Notebook; IJKL-MNOP; DESKTOP-NOTE; 192.168.0.51:8787
 Dá para editar à mão, mas não é preciso: o que você adiciona pela página é
 gravado ali automaticamente.
 
-O painel do PC principal soma o tempo de todos e mostra a lista **Por PC**. Os
-que estiverem desligados aparecem como `offline` e não entram na soma. Os PCs
+O painel do PC principal soma o tempo de todos e mostra a lista **Por PC**. Se um
+PC não responder (desligado, rede oscilando), ele aparece como `offline` com o
+último tempo que mandou, e esse tempo continua na soma — o total não cai e volta a
+cada queda da rede. Quando ele volta, o número se atualiza sozinho. Os PCs
 precisam estar na mesma rede e com o painel ligado — em cada um, na primeira vez,
 o Windows pede a liberação do firewall (o mesmo UAC de quando você ligou o
 painel): ele libera a porta do painel e a da descoberta de uma vez.
@@ -401,8 +461,6 @@ Depois de editar o arquivo, **feche e abra o Time** para valer.
 
 O painel é para a rede de casa ou do escritório. O código protege os dados, mas
 o tráfego não é criptografado (não tem TLS). **Não abra essa porta na internet.**
-Se quiser ver de fora, use uma VPN como Tailscale ou ZeroTier: aí o mesmo
-endereço funciona pelo IP da VPN, sem expor nada.
 
 A descoberta na rede também não manda o código, nem em forma de hash: o aviso
 leva só o nome da máquina e a porta. Quando o endereço de um PC muda, o painel

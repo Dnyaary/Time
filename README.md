@@ -35,16 +35,24 @@ There are many screen time trackers. Time is for people who want to see where th
 - **Last 14 days:** line chart with the period average. The line is green at the bottom and turns amber and red as it rises.
 - **This week and this month:** total time, average per day of use and comparison with the previous week and month.
 - **Groups:** put apps in groups (Work, Social media, Video & music…) in `categorias.txt` and see the time per group.
+- **Focus:** mark groups as productive or distraction (`[Work | productive]`) and see, on the dashboard and in the window, how much of the day went to each.
+- **Day summary, ready to read:** "10h on: 3h productive, 3h of distraction, 2h neutral and 2h on but idle", with a bar and the percentage of each part.
+- **Week and month summary:** any week or month in the history, with arrows to go back — the same sentence for the whole period, one bar per day (or per week), the comparison with the week before, the most productive day, the most used app and the biggest distraction.
+- **Pause:** a button in the window stops counting for 15 minutes, 1 hour or until you resume — for a break, or when someone else uses the PC.
+- **Idle time:** also counts how long the PC stayed on with nobody using it ("On but idle"), separate from the real usage time.
+- **Steady with an unstable network:** if a PC stops responding, the dashboard keeps its last data and marks it offline, so the total doesn't drop and come back. A PC on two networks shows one link for each.
 - **App detail:** tap an app to see its history — today, last 14 days, week and month.
 - **Light and dark theme:** follows the phone, with a button to switch.
 - **Previous days:** below the chart, a summary of each day (date and time). Tap a day to open the chart with that day marked and **every** app used on it.
-- **Report:** download the history (days, apps or hours) as CSV spreadsheets straight from the dashboard.
+- **Report:** download the week or month summary (day by day and per app, with productive, distraction and idle time) or the full history (days, apps or hours) as CSV spreadsheets straight from the dashboard.
 - **Several PCs:** each PC runs its own Time; one becomes the main one and adds up the others. The list shows the total and the time per computer — tap a PC to see only what it is using.
 - **Automatic discovery:** Time instances on the same network find each other (UDP 8788). You only type the other PC's code once.
 - **Discreet window:** the shortcut opens only a small window with the name "Time" and a minimize button (minimizing hides it again). The full information is behind a second shortcut. Time itself also shows up in the app list, so the dashboard shows when you have it open.
 - **No cloud:** the data stays in `C:\Program Files\Time`, on your PC. The dashboard only answers on the local network and requires an access code.
 
 ## Installation (Windows 10/11, 64-bit)
+
+> **The browser may warn you about the download.** Edge and Chrome show "Time.exe isn't commonly downloaded" for new programs without a digital signature. In Edge: **⋯ → Keep → Show more → Keep anyway**. In Chrome: **Keep**. To check that the file is the one published here, compare it with `Time.exe.sha256` from the same release (`certutil -hashfile Time.exe SHA256`), or build it yourself from the source.
 
 1. Download `Time.exe` from the [Releases](../../releases/latest) page (a single self-contained file — no need to install .NET).
 2. Run it from where you downloaded it. **Nothing appears on screen** — it stays hidden.
@@ -85,7 +93,11 @@ On every push to `main`, GitHub Actions also builds it and makes `Time.exe` avai
 
 | File | Purpose |
 |---|---|
-| `Program.cs` | counting, window, global shortcut, firewall, data, dashboard and remote PCs |
+| `Program.cs` | entry point: single instance and self-install to Program Files |
+| `Contador.cs` | time counting, windows and Start with Windows |
+| `Contador.*.cs` | the other parts of the counter: dashboard link and firewall (`Painel`), remote PCs (`Remotos`), dashboard data and CSV (`Api`), rules and focus (`Regras`), pause (`Pausa`), data files (`Dados`) |
+| `Janelas.cs` | the full window and the small window |
+| `Modelos.cs`, `AtalhoGlobal.cs`, `Idioma.cs` | data types, global shortcut, Portuguese/English text |
 | `Api.cs` | HTTP server and the whole dashboard page (embedded HTML/CSS/JS) |
 | `Descoberta.cs` | discovery of other PCs on the network (UDP 8788, HMAC) |
 | `Time.csproj` | .NET 10 WinForms project, icon and metadata |
@@ -107,6 +119,7 @@ Everything is in `C:\Program Files\Time`:
 | `categorias.txt` | rules that group apps |
 | `config.txt` | port, access code and firewall state |
 | `pcs.txt` | other PCs shown on the dashboard |
+| `pcs_dados.json` | last data received from each of those PCs (used while one is offline) |
 
 Copying this folder is a complete backup. The files are plain text (CSV), readable by anything.
 
@@ -120,7 +133,17 @@ program: CorelDRW = CorelDRAW        # start of the process name (without .exe)
 title: Invoice = Invoices            # title of any window
 ```
 
-The Portuguese keywords `programa:` and `titulo:` work too. The first matching rule wins; anything that matches no rule counts as **"Others"**. The file reloads by itself a few seconds after you save it.
+Group rules with a `[Group]` line, and optionally mark the group for the focus bar:
+
+```text
+[Work | productive]
+program: devenv = Visual Studio
+
+[Social media | distraction]
+site: Instagram = Instagram
+```
+
+The Portuguese keywords `programa:`, `titulo:`, `produtivo` and `distração` work too. The first matching rule wins; anything that matches no rule counts as **"Others"**. The file reloads by itself a few seconds after you save it.
 
 ## Privacy
 
@@ -135,7 +158,7 @@ The Portuguese keywords `programa:` and `titulo:` work too. The first matching r
 
 - Windows only (WinForms + Windows APIs).
 - The dashboard needs the PC on, Time running and the phone on the same network.
-- Does not work over VPN/mobile data by default; reaching it from outside would mean opening the port on the router (not recommended — use a VPN such as Tailscale or ZeroTier instead).
+- Away from the network it does not open. Never open the port on the router.
 - No installer and no digital signature.
 
 ## License

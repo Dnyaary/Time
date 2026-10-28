@@ -54,6 +54,7 @@ no cloud and no account — see [Phone dashboard](#phone-dashboard-local-network
 | `categorias.txt` | The list of what to count and how to name it. You edit this one. |
 | `config.txt` | Port and access code of the phone dashboard. |
 | `pcs.txt` | Other PCs on the dashboard, one per line: `name; code; machine; ip:port`. |
+| `pcs_dados.json` | Last data received from each PC in `pcs.txt`, used while it is offline. |
 
 The path is always `C:\Program Files\Time`. If the folder doesn't exist, the
 program creates it on the first run — and that first run **asks for elevation
@@ -68,9 +69,12 @@ administrator once to go back to the right path.
 ### Columns of `atividade_diaria.csv`
 
 ```
-Date;User;Machine;First activity;Last activity;Active time;Seconds;Idle limit (s)
-2026-10-22;daniel;PC-TI;08:12:40;17:41:05;06:48:12;24492;30
+Date;User;Machine;First activity;Last activity;Active time;Seconds;Idle limit (s);Idle (s)
+2026-10-22;daniel;PC-TI;08:12:40;17:41:05;06:48:12;24492;30;3120
 ```
+
+`Idle (s)` is the time the PC stayed on, with Time running, but with nobody using
+it. It is not part of the active time, and a pause doesn't count as idle.
 
 ### Columns of `apps_diario.csv`
 
@@ -143,6 +147,32 @@ A new `categorias.txt` already comes with groups (Social media, Video & music,
 Communication, AI, Work, Shopping and Games). Groups aren't stored in the history:
 move a program to another group and the dashboard adds up its past days in the
 new group right away.
+
+**Focus: productive or distraction (optional):**
+
+At the end of the group name, `| productive` or `| distraction` says what that
+time means to you. The dashboard shows the **Focus** bar (how much of the day was
+productive, distraction and neutral) and the window shows the line
+"Productive 5h 10min · Distraction 1h 20min".
+
+```
+[Work | productive]
+program: devenv = Visual Studio
+
+[Social media | distraction]
+site: Instagram = Instagram
+
+[Communication]
+program: WhatsApp = WhatsApp
+```
+
+Unmarked groups (like Communication above) and programs with no group count as
+**neutral**. The default file already marks Work and AI as productive, and Social
+media, Video & music, Shopping and Games as distraction. It's your call: change
+the marks as you like — the dashboard recalculates every day. If no group is
+marked at all, groups with the default names use these default marks; use
+`| neutral` to leave a group out. The Portuguese words `produtivo`, `distração`
+and `neutro` work too.
 
 **Tolerance (optional, at the end of the line):**
 
@@ -234,7 +264,16 @@ before running the new `.exe` — it installs itself over the old one.
   cancels the sequence.
 - **X of the full window:** quits the program, saving the data. To keep it
   running, use the shortcut instead of the X. The mini window has no X.
+- **Status line:** **● Counting** while the PC is in use, **○ Idle** once the
+  tolerance passes with no mouse/keyboard input, and **❚❚ Paused** during a pause.
+  Below it, **On but idle** shows how long the PC stayed on today with nobody using
+  it (shown from 1 minute on; on the dashboard too).
 - **Window buttons:**
+  - **Pause**: stops counting for **15 minutes**, **1 hour** or **until you
+    resume**, even while the PC is in use — for a break, or when someone else is
+    going to use the PC. During the pause the button turns into **Resume** and the
+    phone dashboard shows "Paused until 15:30". The pause isn't saved: closing
+    Time or restarting the PC goes back to counting.
   - **Data folder**: opens `C:\Program Files\Time` in Explorer.
   - **Categories**: opens `categorias.txt` in Notepad.
   - **Start with Windows**: turns automatic startup on/off.
@@ -264,6 +303,11 @@ network.
 
 On the PC itself, the same dashboard opens at `http://localhost:8787/?k=YOUR-CODE`.
 
+If the PC is on **two networks** (cable and Wi-Fi, or two networks at the office),
+the window shows a second link, **"On the other network"**. Use the link of the
+network the phone (or the other PC) is on. Virtual adapters (Hyper-V, WSL,
+VirtualBox, VMware) are ignored.
+
 The end of the link (`?k=...`) is the **access code**. Anyone opening the address
 without it only sees the code screen; the data only appears with the right code.
 
@@ -272,8 +316,12 @@ without it only sees the code screen; the data only appears with the right code.
 - **Today**: today's time and the period (first and last activity).
 - **Per PC**: how much each computer was used today and whether it's
   online. Tap a PC to see only what it's using.
+- **Day summary**: a ready-made sentence, e.g. "10h on: 3h productive, 3h of
+  distraction, 2h neutral and 2h on but idle", with a bar and the percentage of
+  each part: productive (green), distraction (red), neutral (grey) and on but idle
+  (striped). With no marked groups, it shows only "in use" and "idle".
 - **By group**: today's time added up per `categorias.txt` group (only shown when
-  there are groups).
+  there are groups). Each group's bar follows its focus color.
 - **Per app**: today's top programs, with a thin bar
   proportional to each one. Tap an app to open its **detail**: today's
   time, the last 14 days chart, the week, the month and the days it was used.
@@ -285,11 +333,22 @@ without it only sees the code screen; the data only appears with the right code.
 - **This week** and **This month**: total time since Monday and since the 1st
   of the month, with the average per day of use and a comparison with the same
   stretch of the previous week and month (e.g. "▲ 12% vs last week").
+- **Week / month summary**: the **Week** (Monday to Sunday) and **Month** tabs pick
+  the period, and the **‹ ›** arrows go back and forth — you can see any week or
+  month in the history (two months ago, for example). On Monday it opens on the
+  week that just closed. It shows the sentence for the whole period, one bar per
+  day in a week or per week in a month (tap to open), the comparison with the
+  period before — for the period in progress, up to the same day — and the
+  highlights: most productive day, most used app, biggest distraction and average
+  per day of use.
 - **Previous days**: below the chart, a summary of each day
   (date and total time, nothing else). Tap a day to open the chart with that day
   marked and the full list of programs used on it; **← Back** returns
   to today.
-- **Report**: **Days**, **Apps** and **Hours** buttons download the history as
+- **Report**: the **Week** (or **Month**) button downloads the summary of the period
+  open in the summary above: one day per line with on, in use, productive,
+  distraction, neutral and idle time, the period total and every app with its group
+  and focus. The **Days**, **Apps** and **Hours** buttons download the history as
   CSV spreadsheets (open in Excel). In the all-PCs view they include every PC in
   the list; inside a single PC, only that one.
 - **Add or remove PCs**, at the bottom of the page,
@@ -353,7 +412,9 @@ Notebook; IJKL-MNOP; DESKTOP-NOTE; 192.168.0.51:8787
 whatever you add through the page is saved there automatically.
 
 The main PC's dashboard adds up everyone's time and shows the **Per PC** list.
-PCs that are off show as `offline` and are left out of the total. The PCs need to
+If a PC doesn't respond (turned off, unstable network), it shows as `offline` with the
+last time it sent, and that time stays in the total — the total doesn't drop and come
+back with every network hiccup. When the PC is back, the number updates by itself. The PCs need to
 be on the same network with the dashboard turned on — on each one, the first time,
 Windows asks to open the firewall (the same UAC as when you turned the dashboard
 on): it opens the dashboard port and the discovery port at once.
@@ -408,8 +469,7 @@ After editing the file, **close and reopen Time** for it to take effect.
 
 The dashboard is meant for a home or office network. The code protects the data,
 but the traffic is not encrypted (no TLS). **Do not open this port to the
-internet.** If you want to see it from outside, use a VPN such as Tailscale or
-ZeroTier: the same address then works through the VPN IP without exposing anything.
+internet.**
 
 Network discovery doesn't send the code either, not even as a hash: the
 announcement only carries the machine name and port. When a PC's address changes,

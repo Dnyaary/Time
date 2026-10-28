@@ -17,6 +17,7 @@ apps_diario.csv
 horas_diario.csv
 atividade_diaria.txt
 categorias.txt
+pcs_dados.json
 
 # Windows
 Thumbs.db

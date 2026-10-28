@@ -1,0 +1,22 @@
+name: Idea or suggestion
+description: Suggest something new for Time.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: You can write in English or Portuguese.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do?
+      description: Describe what you want to see or understand about your time, not only the button you imagine.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How could it work?
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else

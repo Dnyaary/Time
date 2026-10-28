@@ -23,7 +23,8 @@ using System.Text;
 //   /api/dias?n=14&k=...   histórico
 //   /api/csv?tipo=dias&k=  planilha CSV para baixar (dias, apps ou horas)
 //   /api/app?nome=...&k=   histórico de um programa/site
-//   /api/grupos?k=         programa -> grupo, conforme o categorias.txt
+//   /api/grupos?k=         programa -> grupo e grupo -> foco, conforme o categorias.txt
+//   /api/semana?inicio=&n= os dias de uma semana ou de um mês, com os programas de cada dia
 //
 // O código é conferido em toda rota /api/. A página em si é pública (só a
 // interface), então quem abrir o endereço sem o código vê a tela de acesso.
@@ -48,6 +49,7 @@ class ServidorApi : IDisposable
     readonly Func<string, string, string?> csv;                          // tipo, id
     readonly Func<string, string, int, string> app;                      // nome, id, dias
     readonly Func<string> grupos;
+    readonly Func<string, string, int, string> semana;                   // início, id, dias
     readonly Thread thread;
     volatile bool rodando = true;
 
@@ -55,7 +57,8 @@ class ServidorApi : IDisposable
                        Func<string, string, string> dia,
                        Func<string> descobertos, Func<string, string, string, string, string> adicionarPc,
                        Func<string, string> removerPc, Func<string, string, string?> csv,
-                       Func<string, string, int, string> app, Func<string> grupos)
+                       Func<string, string, int, string> app, Func<string> grupos,
+                       Func<string, string, int, string> semana)
     {
         this.codigo = codigo;
         this.resumo = resumo;
@@ -68,6 +71,7 @@ class ServidorApi : IDisposable
         this.csv = csv;
         this.app = app;
         this.grupos = grupos;
+        this.semana = semana;
 
         ouvinte = new TcpListener(IPAddress.Any, porta);
         ouvinte.Start();   // porta ocupada ou bloqueada: a exceção sobe para quem chamou
@@ -251,6 +255,12 @@ class ServidorApi : IDisposable
             case "/api/grupos":
                 return (200, TIPO_JSON, grupos());
 
+            case "/api/semana":
+                int ns = int.TryParse(parametros.GetValueOrDefault("n"), out int valor5) ? Math.Clamp(valor5, 1, 31) : 7;
+                return (200, TIPO_JSON, semana(
+                    parametros.GetValueOrDefault("inicio") ?? "",
+                    parametros.GetValueOrDefault("id") ?? "", ns));
+
             default:
                 return (404, TIPO_JSON, "{\"erro\":\"rota\"}");
         }
@@ -401,6 +411,51 @@ class ServidorApi : IDisposable
         .pc-rotulo{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
         .pc-dot{width:6px;height:6px;background:var(--acento);flex:0 0 auto}
         .pc-dot.off{background:var(--fraco)}
+        .pc-dot.pausa{background:var(--alerta)}
+        #estado.pausa::before{background:var(--alerta)}
+        .foco-barra{display:flex;height:6px;background:var(--trilho);gap:2px}
+        .foco-barra i{display:block;height:100%;min-width:0}
+        .foco-barra .p,.foco-cor.p{background:var(--acento)}
+        .foco-barra .n,.foco-cor.n{background:var(--fraco)}
+        .foco-barra .d,.foco-cor.d{background:var(--ruim)}
+        .foco-barra .s,.foco-cor.s{background:repeating-linear-gradient(135deg,var(--fraco) 0 1.5px,transparent 1.5px 4px)}
+        .foco-cor.s{box-shadow:inset 0 0 0 1px var(--fraco)}
+        .foco-legenda{display:grid;grid-template-columns:repeat(2,1fr);gap:14px 12px;margin-top:16px}
+        .frase{margin:0 0 14px;font-size:14px;line-height:1.5;color:var(--texto)}
+        .frase b{font-weight:600}
+        .abas{display:flex;gap:2px}
+        .abas button{background:none;border:1px solid var(--linha-forte);color:var(--suave);padding:5px 8px;
+          font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;font-family:inherit;cursor:pointer}
+        .abas button.ativa{background:var(--texto);border-color:var(--texto);color:var(--fundo)}
+        .navega{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:-4px 0 14px}
+        .navega button{background:none;border:1px solid var(--linha-forte);color:var(--texto);width:34px;height:28px;
+          font-size:18px;line-height:1;font-family:inherit;cursor:pointer;flex:0 0 auto}
+        .navega button:disabled{opacity:.3;cursor:default}
+        #semanaDatas{text-align:center}
+        #semanaVs{margin:10px 0 0}
+        #semanaDias{margin-top:16px}
+        #semanaDias li{padding:7px 0;border-top:0}
+        .sd-linha{display:grid;grid-template-columns:86px 1fr 70px;align-items:center;gap:10px;width:100%;
+          margin:0;padding:0;background:none;border:0;color:inherit;font:inherit;text-align:left}
+        button.sd-linha{cursor:pointer}
+        .sd-dia{white-space:nowrap;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--suave);font-variant-numeric:tabular-nums}
+        .sd-barra{display:flex;height:6px;gap:1px;min-width:0}
+        .sd-barra i{display:block;height:100%;min-width:0}
+        .sd-barra .p{background:var(--acento)} .sd-barra .d{background:var(--ruim)} .sd-barra .n{background:var(--fraco)}
+        .sd-barra .s{background:repeating-linear-gradient(135deg,var(--fraco) 0 1.5px,transparent 1.5px 4px)}
+        .sd-tempo{font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
+        .sd-vazio .sd-tempo,.sd-vazio .sd-dia{color:var(--fraco)}
+        .destaques{margin-top:18px}
+        .destaques li{display:flex;justify-content:space-between;gap:14px;padding:10px 0;font-size:13px}
+        .destaques li span:first-child{color:var(--suave)}
+        .destaques li span:last-child{text-align:right;font-variant-numeric:tabular-nums}
+        .foco-item .rotulo{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+        .foco-cor{display:inline-block;width:6px;height:6px;flex:0 0 auto}
+        .foco-item .valor{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+        .foco-item .sub{font-size:11px;color:var(--suave);font-variant-numeric:tabular-nums}
+        .barra.p i{background:var(--acento)}
+        .barra.d i{background:var(--ruim);opacity:.8}
+        .barra.n i{background:var(--fraco)}
         .pc-tempo{font-size:13px;font-variant-numeric:tabular-nums;flex:0 0 auto;margin-left:auto}
         .pc-seta{color:var(--fraco);font-size:14px;line-height:1;flex:0 0 auto}
         .pc-off .pc-linha{cursor:default}
@@ -491,10 +546,11 @@ class ServidorApi : IDisposable
         .hbar{fill:var(--barra)}
         .hbar.pico{fill:var(--acento)}
         .hbase{stroke:var(--trilho);stroke-width:1;vector-effect:non-scaling-stroke}
-        .baixar{display:flex;gap:8px}
-        .baixar a{flex:1;min-width:0;padding:11px 6px;border:1px solid var(--linha-forte);color:var(--texto);
+        .baixar{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+        .baixar a{min-width:0;padding:11px 6px;border:1px solid var(--linha-forte);color:var(--texto);
           text-align:center;text-decoration:none;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}
         .nota{margin:10px 0 0;font-size:11px;color:var(--fraco)}
+        .baixar a[hidden]{display:none}
         .cab-dir{display:flex;align-items:center;gap:14px;min-width:0}
         #tema{background:none;border:0;padding:0;color:var(--suave);font-size:14px;line-height:1;cursor:pointer;flex:0 0 auto}
         .app-linha{display:block;width:100%;margin:0;padding:0;background:none;border:0;color:inherit;
@@ -550,6 +606,13 @@ class ServidorApi : IDisposable
             <ul id="pcs"></ul>
           </section>
 
+          <section id="secaoFoco" hidden>
+            <div class="topo"><span class="rotulo" data-t="resumoDia">Resumo do dia</span><span class="dado" id="focoPct"></span></div>
+            <p class="frase" id="focoFrase"></p>
+            <div class="foco-barra" id="focoBarra"></div>
+            <div class="foco-legenda" id="focoLegenda"></div>
+          </section>
+
           <section id="secaoGrupos" hidden>
             <div class="topo"><span class="rotulo" data-t="porGrupo">Por grupo</span><span class="dado" id="totalGrupos"></span></div>
             <ul id="grupos"></ul>
@@ -589,6 +652,26 @@ class ServidorApi : IDisposable
             </div>
           </section>
 
+          <section id="secaoSemana" hidden>
+            <div class="topo">
+              <span class="rotulo" id="rotuloPeriodo"></span>
+              <span class="abas">
+                <button type="button" id="abaSemana" data-t="abaSemana">Semana</button>
+                <button type="button" id="abaMes" data-t="abaMes">Mês</button>
+              </span>
+            </div>
+            <div class="navega">
+              <button type="button" id="periodoAntes" aria-label="">&#8249;</button>
+              <span class="dado" id="semanaDatas"></span>
+              <button type="button" id="periodoDepois" aria-label="">&#8250;</button>
+            </div>
+            <p class="frase" id="semanaFrase"></p>
+            <div class="foco-barra" id="semanaBarra"></div>
+            <p class="comp" id="semanaVs"></p>
+            <ul id="semanaDias"></ul>
+            <ul class="destaques" id="semanaDestaques"></ul>
+          </section>
+
           <section id="secaoDias" hidden>
             <div class="topo"><span class="rotulo" data-t="diasAnteriores">Dias anteriores</span><span class="dado" id="diasConta"></span></div>
             <ul id="dias"></ul>
@@ -597,6 +680,7 @@ class ServidorApi : IDisposable
           <section id="secaoBaixar">
             <div class="topo"><span class="rotulo" data-t="relatorio">Relatório</span></div>
             <div class="baixar">
+              <a id="csvSemana" href="#" data-t="baixarSemana">Semana</a>
               <a id="csvDias" href="#" data-t="baixarDias">Dias</a>
               <a id="csvApps" href="#" data-t="baixarApps">Programas</a>
               <a id="csvHoras" href="#" data-t="baixarHoras">Horas</a>
@@ -639,9 +723,15 @@ class ServidorApi : IDisposable
             todosPcs: '← Todos os PCs', voltar: '← Voltar', hoje: 'Hoje', dia: 'Dia',
             porPc: 'Por PC', porPrograma: 'Por programa', porHora: 'Por hora', ultimos14: 'Últimos 14 dias',
             semana: 'Esta semana', mes: 'Este mês', diasAnteriores: 'Dias anteriores',
-            relatorio: 'Relatório', baixarDias: 'Dias', baixarApps: 'Programas', baixarHoras: 'Horas',
+            relatorio: 'Relatório', baixarSemana: 'Semana', baixarDias: 'Dias', baixarApps: 'Programas', baixarHoras: 'Horas',
             notaTodos: 'Planilhas CSV com o histórico de todos os PCs, para abrir no Excel.',
             notaUm: 'Planilhas CSV com o histórico deste PC, para abrir no Excel.',
+            notaSemana: 'Semana: o resumo da semana escolhida acima ({0}), dia a dia e por programa.',
+            arqSemana: 'time_semana_{0}.csv',
+            cDia: 'Dia', cLigado: 'Ligado', cUso: 'Em uso', cProdutivo: 'Produtivo', cDistracao: 'Distração',
+            cNeutro: 'Neutro', cParado: 'Ligado sem uso', cTotal: 'Total da semana', cPrograma: 'Programa',
+            cGrupo: 'Grupo', cFoco: 'Foco', cTempo: 'Tempo', cSegundos: 'Segundos', cResumo: 'Resumo',
+            cSemana: 'Semana de {0} a {1}',
             gerenciar: 'Adicionar ou remover PCs', naRede: 'Na rede agora',
             nomeEx: 'Nome (ex.: Notebook)', linkOutro: 'Link do outro PC, com ?k=', adicionar: 'Adicionar',
             verUsando: 'Ver o que {0} está usando', este: ' · este', offline: 'offline', nPcs: '{0} PCs',
@@ -656,7 +746,26 @@ class ServidorApi : IDisposable
             graficoAria: 'Tempo de uso por dia', horasAria: 'Tempo de uso por hora', verDia: 'Ver o dia {0}',
             dia1: '1 dia', diasN: '{0} dias', diaUso1: '1 dia com uso', diasUso: '{0} dias com uso',
             periodo: 'Início {0}  ·  Última {1}', semAtividade: 'Sem atividade', semAtividadeHoje: 'Sem atividade hoje',
-            historico: 'Histórico', contando: 'Contando · {0}', pausado: 'Pausado',
+            historico: 'Histórico', contando: 'Contando · {0}', semUso: 'Sem uso agora',
+            pausado: 'Pausado', pausadoAte: 'Pausado até {0}',
+            foco: 'Foco', produtivo: 'Produtivo', distracao: 'Distração', neutro: 'Neutro',
+            pctProdutivo: '{0}% produtivo', offlineDesde: '{0} · offline',
+            resumoDia: 'Resumo do dia', resumoSemana: 'Resumo da semana', resumoMes: 'Resumo do mês',
+            abaSemana: 'Semana', abaMes: 'Mês', estaSemana: 'esta semana', esteMes: 'este mês',
+            semanaAnterior: 'Semana anterior', semanaSeguinte: 'Semana seguinte', mesAnterior: 'Mês anterior',
+            mesSeguinte: 'Mês seguinte', verSemana: 'Ver a semana {0}', mesSemDados: 'Sem uso registrado neste mês.',
+            vsMesAnterior: '{0} que o mês anterior', vsMesAnteriorAte: '{0} que o mês anterior até o mesmo dia',
+            dDiasUso: 'Dias com uso', baixarMes: 'Mês', arqMes: 'time_mes_{0}.csv', cMes: 'Mês de {0} a {1}',
+            cTotalMes: 'Total do mês', notaMes: 'Mês: o resumo do mês escolhido acima ({0}), dia a dia e por programa.',
+            semUsoParado: 'Sem uso', emUso: 'Em uso', ligadoTotal: '{0} ligado',
+            fraseLigado: '<b>{0}</b> ligado: {1}.', fraseUso: '<b>{0}</b> de uso: {1}.',
+            sProdutivo: '<b>{0}</b> produtivo', sDistracao: '<b>{0}</b> de distração', sNeutro: '<b>{0}</b> neutro',
+            sEmUso: '<b>{0}</b> em uso', sParado: '<b>{0}</b> ligado sem uso', e: ' e ',
+            semanaSemDados: 'Sem uso registrado nesta semana.',
+            vsProd: 'Produtivo {0}', vsDist: 'distração {0}', vsUso: 'Uso {0}', vsAnterior: '{0} que a semana anterior', vsAnteriorAte: '{0} que a semana anterior até o mesmo dia',
+            dMaisProdutivo: 'Dia mais produtivo', dMaisUsado: 'Dia de mais uso', dTopApp: 'Mais usado',
+            dTopDistracao: 'Maior distração', dMedia: 'Média por dia de uso',
+            dicaGuardado: 'Sem resposta agora: mostrando os últimos dados que ele mandou',
             codigoInvalido: 'código inválido', semConexao: 'sem conexão',
             pico: 'pico {0}', semHoras: 'Sem dados por hora ainda',
             porGrupo: 'Por grupo', semGrupo: 'Sem grupo', grupo1: '1 grupo', gruposN: '{0} grupos',
@@ -684,9 +793,15 @@ class ServidorApi : IDisposable
             todosPcs: '← All PCs', voltar: '← Back', hoje: 'Today', dia: 'Day',
             porPc: 'Per PC', porPrograma: 'Per app', porHora: 'By hour', ultimos14: 'Last 14 days',
             semana: 'This week', mes: 'This month', diasAnteriores: 'Previous days',
-            relatorio: 'Report', baixarDias: 'Days', baixarApps: 'Apps', baixarHoras: 'Hours',
+            relatorio: 'Report', baixarSemana: 'Week', baixarDias: 'Days', baixarApps: 'Apps', baixarHoras: 'Hours',
             notaTodos: 'CSV spreadsheets with the history of every PC, to open in Excel.',
             notaUm: 'CSV spreadsheets with this PC\'s history, to open in Excel.',
+            notaSemana: 'Week: the summary of the week chosen above ({0}), day by day and per app.',
+            arqSemana: 'time_week_{0}.csv',
+            cDia: 'Day', cLigado: 'On', cUso: 'In use', cProdutivo: 'Productive', cDistracao: 'Distraction',
+            cNeutro: 'Neutral', cParado: 'On but idle', cTotal: 'Week total', cPrograma: 'App',
+            cGrupo: 'Group', cFoco: 'Focus', cTempo: 'Time', cSegundos: 'Seconds', cResumo: 'Summary',
+            cSemana: 'Week from {0} to {1}',
             gerenciar: 'Add or remove PCs', naRede: 'On the network now',
             nomeEx: 'Name (e.g. Laptop)', linkOutro: 'Other PC\'s link, with ?k=', adicionar: 'Add',
             verUsando: 'See what {0} is using', este: ' · this PC', offline: 'offline', nPcs: '{0} PCs',
@@ -701,7 +816,26 @@ class ServidorApi : IDisposable
             graficoAria: 'Usage time per day', horasAria: 'Usage time per hour', verDia: 'See {0}',
             dia1: '1 day', diasN: '{0} days', diaUso1: '1 day with use', diasUso: '{0} days with use',
             periodo: 'Start {0}  ·  Last {1}', semAtividade: 'No activity', semAtividadeHoje: 'No activity today',
-            historico: 'History', contando: 'Counting · {0}', pausado: 'Paused',
+            historico: 'History', contando: 'Counting · {0}', semUso: 'Idle',
+            pausado: 'Paused', pausadoAte: 'Paused until {0}',
+            foco: 'Focus', produtivo: 'Productive', distracao: 'Distraction', neutro: 'Neutral',
+            pctProdutivo: '{0}% productive', offlineDesde: '{0} · offline',
+            resumoDia: 'Day summary', resumoSemana: 'Week summary', resumoMes: 'Month summary',
+            abaSemana: 'Week', abaMes: 'Month', estaSemana: 'this week', esteMes: 'this month',
+            semanaAnterior: 'Previous week', semanaSeguinte: 'Next week', mesAnterior: 'Previous month',
+            mesSeguinte: 'Next month', verSemana: 'See the week {0}', mesSemDados: 'No use recorded this month.',
+            vsMesAnterior: '{0} vs the month before', vsMesAnteriorAte: '{0} vs the month before, up to the same day',
+            dDiasUso: 'Days with use', baixarMes: 'Month', arqMes: 'time_month_{0}.csv', cMes: 'Month from {0} to {1}',
+            cTotalMes: 'Month total', notaMes: 'Month: the summary of the month chosen above ({0}), day by day and per app.',
+            semUsoParado: 'Idle', emUso: 'In use', ligadoTotal: '{0} on',
+            fraseLigado: '<b>{0}</b> on: {1}.', fraseUso: '<b>{0}</b> of use: {1}.',
+            sProdutivo: '<b>{0}</b> productive', sDistracao: '<b>{0}</b> of distraction', sNeutro: '<b>{0}</b> neutral',
+            sEmUso: '<b>{0}</b> in use', sParado: '<b>{0}</b> on but idle', e: ' and ',
+            semanaSemDados: 'No use recorded this week.',
+            vsProd: 'Productive {0}', vsDist: 'distraction {0}', vsUso: 'Use {0}', vsAnterior: '{0} vs the week before', vsAnteriorAte: '{0} vs the week before, up to the same day',
+            dMaisProdutivo: 'Most productive day', dMaisUsado: 'Busiest day', dTopApp: 'Most used',
+            dTopDistracao: 'Biggest distraction', dMedia: 'Average per day of use',
+            dicaGuardado: 'Not responding now: showing the last data it sent',
             codigoInvalido: 'invalid code', semConexao: 'offline',
             pico: 'peak {0}', semHoras: 'No hourly data yet',
             porGrupo: 'By group', semGrupo: 'No group', grupo1: '1 group', gruposN: '{0} groups',
@@ -782,6 +916,15 @@ class ServidorApi : IDisposable
 
         // Programa -> grupo, conforme o categorias.txt do PC principal.
         var mapaGrupos = {};
+
+        // Grupo -> "produtivo" ou "distracao" (as marcas [Grupo | produtivo] do categorias.txt).
+        var mapaFoco = {};
+
+        // 'p' = produtivo, 'd' = distração, 'n' = neutro (sem marca ou sem grupo).
+        function focoDe(nome) {
+          var tipo = mapaFoco[mapaGrupos[nome] || ''];
+          return tipo === 'produtivo' ? 'p' : (tipo === 'distracao' ? 'd' : 'n');
+        }
 
         // PCs que estão anunciando na rede agora (a lista só aparece aqui no painel).
         var descobertos = [];
@@ -910,7 +1053,7 @@ class ServidorApi : IDisposable
               var esq = document.createElement('span');
               esq.className = 'pc-nome';
               var ponto = document.createElement('i');
-              ponto.className = 'pc-dot' + (p.online ? '' : ' off');
+              ponto.className = 'pc-dot' + (p.online ? (p.pausado ? ' pausa' : '') : ' off');
               var rotulo = document.createElement('span');
               rotulo.className = 'pc-rotulo';
               rotulo.textContent = p.nome + (p.este ? t('este') : '');
@@ -919,7 +1062,8 @@ class ServidorApi : IDisposable
 
               var dir = document.createElement('span');
               dir.className = 'pc-tempo';
-              dir.textContent = p.online ? seg(p.segundos) : t('offline');
+              dir.textContent = p.online ? seg(p.segundos) : (p.guardado ? t('offlineDesde', seg(p.segundos)) : t('offline'));
+              if (p.guardado) li.title = t('dicaGuardado');
 
               linha.appendChild(esq);
               linha.appendChild(dir);
@@ -1121,7 +1265,7 @@ class ServidorApi : IDisposable
 
         // Uma linha da lista: nome, tempo e a barra do tamanho relativo ao maior.
         // Com aoTocar, a linha vira botão (abre o detalhe do programa).
-        function linhaComBarra(nome, segundos, maior, aoTocar, dica) {
+        function linhaComBarra(nome, segundos, maior, aoTocar, dica, classe) {
           var li = document.createElement('li');
           var caixaLinha = li;
           if (aoTocar) {
@@ -1143,7 +1287,7 @@ class ServidorApi : IDisposable
           topo.appendChild(tempo);
 
           var barra = document.createElement('div');
-          barra.className = 'barra';
+          barra.className = 'barra' + (classe ? ' ' + classe : '');
           var fill = document.createElement('i');
           fill.style.width = Math.max(2, Math.round((segundos / maior) * 100)) + '%';
           barra.appendChild(fill);
@@ -1197,15 +1341,326 @@ class ServidorApi : IDisposable
           if (!temGrupo) return;
 
           var itens = Object.keys(somas)
-            .map(function (g) { return { nome: g || t('semGrupo'), segundos: somas[g] }; })
+            .map(function (g) { return { nome: g || t('semGrupo'), segundos: somas[g], grupo: g }; })
             .sort(function (a, b) { return b.segundos - a.segundos; });
 
           document.getElementById('totalGrupos').textContent =
             itens.length === 1 ? t('grupo1') : t('gruposN', itens.length);
 
           var maior = itens[0].segundos;
-          itens.forEach(function (g) { lista.appendChild(linhaComBarra(g.nome, g.segundos, maior)); });
+          var temFoco = Object.keys(mapaFoco).length > 0;
+          itens.forEach(function (g) {
+            var tipo = mapaFoco[g.grupo];
+            var classe = tipo === 'produtivo' ? 'p' : (tipo === 'distracao' ? 'd' : (temFoco ? 'n' : ''));
+            lista.appendChild(linhaComBarra(g.nome, g.segundos, maior, null, null, classe));
+          });
         }
+
+        // Divide um período em produtivo, distração, neutro e parado (ligado sem uso).
+        // Produtivo e distração vêm dos grupos marcados; neutro é o resto do tempo de uso.
+        function partes(apps, segundos, parado) {
+          var x = { p: 0, d: 0, n: 0, s: Math.max(0, parado || 0) };
+          (apps || []).forEach(function (a) {
+            var tipo = focoDe(a.nome);
+            if (tipo !== 'n' && a.segundos > 0) x[tipo] += a.segundos;
+          });
+          x.uso = Math.max(segundos || 0, x.p + x.d);
+          x.n = Math.max(0, x.uso - x.p - x.d);
+          x.total = x.uso + x.s;
+          return x;
+        }
+
+        function temFoco() { return Object.keys(mapaFoco).length > 0; }
+
+        // Lista "3h produtivo, 2h de distração, 1h neutro e 30min ligado sem uso".
+        function listaPartes(x) {
+          var itens = [];
+          if (temFoco()) {
+            if (x.p > 0) itens.push(t('sProdutivo', seg(x.p)));
+            if (x.d > 0) itens.push(t('sDistracao', seg(x.d)));
+            if (x.n > 0) itens.push(t('sNeutro', seg(x.n)));
+          } else if (x.uso > 0) {
+            itens.push(t('sEmUso', seg(x.uso)));
+          }
+          if (x.s >= 60) itens.push(t('sParado', seg(x.s)));
+          if (itens.length <= 1) return itens.join('');
+          return itens.slice(0, -1).join(', ') + t('e') + itens[itens.length - 1];
+        }
+
+        function frasePartes(x) {
+          return x.s >= 60 ? t('fraseLigado', seg(x.total), listaPartes(x)) : t('fraseUso', seg(x.uso), listaPartes(x));
+        }
+
+        // Barra com as partes, na ordem produtivo, distração, neutro (ou em uso) e parado.
+        function encherBarra(el, x) {
+          el.innerHTML = '';
+          [['p', x.p], ['d', x.d], ['n', x.n], ['s', x.s >= 60 ? x.s : 0]].forEach(function (par) {
+            if (!(par[1] > 0)) return;
+            var parte = document.createElement('i');
+            parte.className = par[0];
+            parte.style.flex = par[1] + ' 1 0';
+            el.appendChild(parte);
+          });
+        }
+
+        // Resumo do dia: frase pronta, barra e legenda com tempo e porcentagem de cada parte.
+        function desenharFoco(apps, segundos, parado) {
+          var secao = document.getElementById('secaoFoco');
+          var x = partes(apps, segundos, parado);
+          secao.hidden = !(x.total > 0);
+          if (secao.hidden) return;
+          function pct(v) { return x.total > 0 ? Math.round(v / x.total * 100) + '%' : ''; }
+
+          document.getElementById('focoFrase').innerHTML = frasePartes(x);
+          encherBarra(document.getElementById('focoBarra'), x);
+          // Mesma base da legenda: o tempo ligado.
+          document.getElementById('focoPct').textContent = temFoco() && x.total > 0
+            ? t('pctProdutivo', Math.round(x.p / x.total * 100)) : '';
+
+          var legenda = document.getElementById('focoLegenda');
+          legenda.innerHTML = '';
+          var itens = temFoco()
+            ? [['p', 'produtivo', x.p], ['d', 'distracao', x.d], ['n', 'neutro', x.n], ['s', 'semUsoParado', x.s]]
+            : [['n', 'emUso', x.uso], ['s', 'semUsoParado', x.s]];
+          itens.forEach(function (it) {
+            if (it[0] === 's' ? it[2] < 60 : !(it[2] > 0)) return;   // só o que aconteceu
+            var caixa = document.createElement('div');
+            caixa.className = 'foco-item';
+            caixa.innerHTML = '<span class="rotulo"><i class="foco-cor ' + it[0] + '"></i><span></span></span>' +
+                              '<div class="valor"></div><div class="sub"></div>';
+            caixa.querySelector('.rotulo span').textContent = t(it[1]);
+            caixa.querySelector('.valor').textContent = seg(it[2]);
+            caixa.querySelector('.sub').textContent = pct(it[2]);
+            legenda.appendChild(caixa);
+          });
+        }
+
+        // ---------- Resumo da semana / do mês ----------
+        // Modo "semana" (segunda a domingo) ou "mes". "atras" conta quantos períodos
+        // para trás: 0 = o atual, 1 = o anterior... As setas ‹ › andam por qualquer
+        // semana ou mês do histórico. Na segunda-feira abre na semana que acabou de fechar.
+        var modoPeriodo = 'semana';
+        var periodoAtras = new Date().getDay() === 1 ? 1 : 0;
+        var cacheSemanas = {};
+        var semanaMostrada = null;   // { modo, inicio, quantos, dados } do período na tela, para o relatório
+
+        function hoje0() { var h = new Date(); return new Date(h.getFullYear(), h.getMonth(), h.getDate()); }
+
+        function inicioDaSemana(atras) {
+          var base = hoje0();
+          return new Date(base.getFullYear(), base.getMonth(), base.getDate() - (base.getDay() + 6) % 7 - 7 * atras);
+        }
+
+        // { inicio, quantos } de um período: a semana ou o mês "atras" períodos antes do atual.
+        function periodo(modo, atras) {
+          if (modo === 'mes') {
+            var h = hoje0();
+            var ini = new Date(h.getFullYear(), h.getMonth() - atras, 1);
+            return { inicio: ini, quantos: new Date(ini.getFullYear(), ini.getMonth() + 1, 0).getDate() };
+          }
+          return { inicio: inicioDaSemana(atras), quantos: 7 };
+        }
+
+        // O período atual muda o tempo todo; os já fechados ficam 5 minutos em cache.
+        async function buscarSemana(per, atual) {
+          var chave = iso(per.inicio) + '|' + per.quantos + '|' + (pcAtual || '');
+          var guardada = cacheSemanas[chave];
+          if (!atual && guardada && Date.now() - guardada.em < 300000) return guardada.dados;
+          var dados = await buscar('/api/semana?inicio=' + iso(per.inicio) + '&n=' + per.quantos +
+                                   (pcAtual ? '&id=' + encodeURIComponent(pcAtual) : ''));
+          cacheSemanas[chave] = { em: Date.now(), dados: dados };
+          return dados;
+        }
+
+        // ateDia: soma só os primeiros dias (0 = segunda), para comparar trechos iguais.
+        function somarSemana(dados, ateDia) {
+          var total = { p: 0, d: 0, n: 0, s: 0, uso: 0, total: 0 }, apps = {}, dias = [];
+          ((dados && dados.dias) || []).forEach(function (d, i) {
+            if (ateDia !== undefined && i > ateDia) return;
+            var x = partes(d.apps, d.segundos, d.parado);
+            x.data = d.data;
+            dias.push(x);
+            ['p', 'd', 'n', 's', 'uso', 'total'].forEach(function (k) { total[k] += x[k]; });
+            (d.apps || []).forEach(function (a) { apps[a.nome] = (apps[a.nome] || 0) + a.segundos; });
+          });
+          total.dias = dias;
+          total.apps = Object.keys(apps).map(function (n) { return { nome: n, segundos: apps[n] }; })
+            .sort(function (a, b) { return b.segundos - a.segundos; });
+          return total;
+        }
+
+        // "26 OUT – 01 NOV" ou "AGOSTO DE 2026"
+        function nomePeriodo(modo, inicio) {
+          if (modo === 'mes')
+            return inicio.toLocaleDateString(LOCAL, { month: 'long', year: 'numeric' }).toUpperCase();
+          var fim = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + 6);
+          return rotuloDia(iso(inicio)).replace(/^[^,]*, /, '') + ' – ' + rotuloDia(iso(fim)).replace(/^[^,]*, /, '');
+        }
+
+        function abrirPeriodo(modo, atras) {
+          modoPeriodo = modo;
+          periodoAtras = Math.max(0, atras);
+          desenharSemana();
+        }
+
+        async function desenharSemana() {
+          var secao = document.getElementById('secaoSemana');
+          var modo = modoPeriodo, atras = periodoAtras, mes = modo === 'mes', atual = atras === 0;
+          var per = periodo(modo, atras), perAntes = periodo(modo, atras + 1);
+          var esta, antes, r;
+          try {
+            r = await Promise.all([buscarSemana(per, atual), buscarSemana(perAntes, false)]);
+          } catch (e) { secao.hidden = true; return; }
+          if (modo !== modoPeriodo || atras !== periodoAtras) return;   // trocou no meio da busca
+          if (r[0].erro) { secao.hidden = true; semanaMostrada = null; desenharBaixar(); return; }
+          esta = somarSemana(r[0]);
+          // Período em andamento: compara com o anterior até o mesmo dia.
+          var ate = undefined;
+          if (atual) ate = mes ? hoje0().getDate() - 1 : (new Date().getDay() + 6) % 7;
+          antes = somarSemana(r[1], ate);
+          secao.hidden = false;
+          semanaMostrada = { modo: modo, inicio: per.inicio, quantos: per.quantos, dados: esta };
+          desenharBaixar();
+
+          document.getElementById('rotuloPeriodo').textContent = t(mes ? 'resumoMes' : 'resumoSemana');
+          document.getElementById('abaSemana').className = mes ? '' : 'ativa';
+          document.getElementById('abaMes').className = mes ? 'ativa' : '';
+          document.getElementById('semanaDatas').textContent =
+            nomePeriodo(modo, per.inicio) + (atual ? ' · ' + t(mes ? 'esteMes' : 'estaSemana') : '');
+          var depois = document.getElementById('periodoDepois');
+          depois.disabled = atual;
+          depois.setAttribute('aria-label', t(mes ? 'mesSeguinte' : 'semanaSeguinte'));
+          document.getElementById('periodoAntes').setAttribute('aria-label', t(mes ? 'mesAnterior' : 'semanaAnterior'));
+
+          var frase = document.getElementById('semanaFrase');
+          var barra = document.getElementById('semanaBarra');
+          var vs = document.getElementById('semanaVs');
+          var listaDias = document.getElementById('semanaDias');
+          var destaques = document.getElementById('semanaDestaques');
+          listaDias.innerHTML = '';
+          destaques.innerHTML = '';
+
+          if (!(esta.total > 0)) {
+            frase.textContent = t(mes ? 'mesSemDados' : 'semanaSemDados');
+            barra.innerHTML = '';
+            vs.textContent = '';
+            return;
+          }
+          frase.innerHTML = frasePartes(esta);
+          encherBarra(barra, esta);
+
+          // Comparação com o período anterior.
+          function variacao(a, b) {
+            if (!(a > 0) || !(b > 0)) return null;
+            var pct = Math.round((a - b) / b * 100);
+            return (pct > 0 ? '\u25b2 ' : (pct < 0 ? '\u25bc ' : '= ')) + Math.abs(pct) + '%';
+          }
+          var partesVs = [];
+          if (temFoco()) {
+            var vp = variacao(esta.p, antes.p), vd = variacao(esta.d, antes.d);
+            if (vp) partesVs.push(t('vsProd', vp));
+            if (vd) partesVs.push(t('vsDist', vd));
+          } else {
+            var vu = variacao(esta.uso, antes.uso);
+            if (vu) partesVs.push(t('vsUso', vu));
+          }
+          var chaveVs = (mes ? 'vsMesAnterior' : 'vsAnterior') + (atual ? 'Ate' : '');
+          vs.textContent = partesVs.length ? t(chaveVs, partesVs.join(' · ')) : '';
+
+          // Linhas: na semana, um dia por linha (tocar abre o dia); no mês, uma semana
+          // por linha (tocar abre aquela semana).
+          var hojeChave = hojeIso();
+          var linhas = [];
+          if (mes) {
+            var grupo = null;
+            esta.dias.forEach(function (d) {
+              var data = new Date(d.data + 'T12:00:00');
+              if (!grupo || data.getDay() === 1) {
+                grupo = { p: 0, d: 0, n: 0, s: 0, uso: 0, total: 0, de: data, ate: data };
+                linhas.push(grupo);
+              }
+              grupo.ate = data;
+              ['p', 'd', 'n', 's', 'uso', 'total'].forEach(function (k) { grupo[k] += d[k]; });
+            });
+            linhas.forEach(function (g) {
+              var mesCurto = function (x) { return rotuloDia(iso(x)).replace(/^[^,]*, /, ''); };
+              g.rotulo = g.de.getDate() === g.ate.getDate() ? mesCurto(g.ate)
+                       : String(g.de.getDate()).padStart(2, '0') + '–' + mesCurto(g.ate);
+              g.futuro = iso(g.de) > hojeChave;
+              var segunda = new Date(g.de.getFullYear(), g.de.getMonth(), g.de.getDate() - (g.de.getDay() + 6) % 7);
+              var semanasAtras = Math.round((inicioDaSemana(0) - segunda) / (7 * 86400000));
+              g.abrir = function () { abrirPeriodo('semana', semanasAtras); };
+              g.dica = t('verSemana', g.rotulo);
+            });
+          } else {
+            linhas = esta.dias.map(function (d) {
+              var x = Object.assign({}, d);
+              x.rotulo = rotuloDia(d.data).replace(/ [A-Z]{3,}$/, '').replace(/^([^,]*), [A-Z]{3,} /, '$1, ');
+              x.futuro = d.data > hojeChave;
+              x.abrir = function () { window.scrollTo(0, 0); if (d.data !== hojeChave) abrirDia(d.data); };
+              x.dica = t('verDia', rotuloDia(d.data));
+              return x;
+            });
+          }
+          var maior = Math.max.apply(null, linhas.map(function (d) { return d.total; }).concat([1]));
+          linhas.forEach(function (d) {
+            var li = document.createElement('li');
+            var temDado = d.total > 0;
+            var linha = document.createElement(temDado ? 'button' : 'div');
+            linha.className = 'sd-linha' + (temDado ? '' : ' sd-vazio');
+            if (temDado) {
+              linha.type = 'button';
+              linha.title = d.dica;
+              linha.addEventListener('click', d.abrir);
+            }
+            var nome = document.createElement('span');
+            nome.className = 'sd-dia';
+            nome.textContent = d.rotulo;
+            var trilho = document.createElement('span');
+            trilho.className = 'sd-barra';
+            trilho.style.width = Math.max(2, Math.round(d.total / maior * 100)) + '%';
+            encherBarra(trilho, d);
+            var tempo = document.createElement('span');
+            tempo.className = 'sd-tempo';
+            tempo.textContent = temDado ? seg(d.uso) : (d.futuro ? '' : '—');
+            linha.appendChild(nome);
+            linha.appendChild(trilho);
+            linha.appendChild(tempo);
+            li.appendChild(linha);
+            listaDias.appendChild(li);
+          });
+
+          // Destaques do período.
+          function destaque(rotulo, valor) {
+            var li = document.createElement('li');
+            li.innerHTML = '<span></span><span></span>';
+            li.firstChild.textContent = rotulo;
+            li.lastChild.textContent = valor;
+            destaques.appendChild(li);
+          }
+          var comUso = esta.dias.filter(function (d) { return d.uso > 0; });
+          var campo = temFoco() ? 'p' : 'uso';
+          var melhor = comUso.slice().sort(function (a, b) { return b[campo] - a[campo]; })[0];
+          if (melhor && melhor[campo] > 0) {
+            var quando = mes ? rotuloDia(melhor.data).replace(/ [A-Z]{3,}$/, '').replace(/^([^,]*), [A-Z]{3,} /, '$1, ')
+                             : rotuloDia(melhor.data).split(',')[0];
+            destaque(temFoco() ? t('dMaisProdutivo') : t('dMaisUsado'), quando + ' · ' + seg(melhor[campo]));
+          }
+          if (esta.apps.length) destaque(t('dTopApp'), esta.apps[0].nome + ' · ' + seg(esta.apps[0].segundos));
+          if (temFoco()) {
+            var distrai = esta.apps.filter(function (a) { return focoDe(a.nome) === 'd'; })[0];
+            if (distrai) destaque(t('dTopDistracao'), distrai.nome + ' · ' + seg(distrai.segundos));
+          }
+          if (comUso.length) {
+            destaque(t('dMedia'), seg(esta.uso / comUso.length));
+            if (mes) destaque(t('dDiasUso'), String(comUso.length));
+          }
+        }
+
+        document.getElementById('abaSemana').addEventListener('click', function () { abrirPeriodo('semana', 0); });
+        document.getElementById('abaMes').addEventListener('click', function () { abrirPeriodo('mes', 0); });
+        document.getElementById('periodoAntes').addEventListener('click', function () { abrirPeriodo(modoPeriodo, periodoAtras + 1); });
+        document.getElementById('periodoDepois').addEventListener('click', function () { abrirPeriodo(modoPeriodo, periodoAtras - 1); });
 
         // Uso por hora: 24 barras (0h a 23h). A hora de maior uso fica destacada.
         function desenharHoras(horas) {
@@ -1473,8 +1928,54 @@ class ServidorApi : IDisposable
           document.getElementById('csvApps').href = link('apps');
           document.getElementById('csvHoras').href = link('horas');
           document.getElementById('notaBaixar').textContent =
-            (pcAtual || totalPcs < 2) ? t('notaUm') : t('notaTodos');
+            ((pcAtual || totalPcs < 2) ? t('notaUm') : t('notaTodos')) +
+            (semanaMostrada ? ' ' + t(semanaMostrada.modo === 'mes' ? 'notaMes' : 'notaSemana',
+                                      nomePeriodo(semanaMostrada.modo, semanaMostrada.inicio)) : '');
+          var botao = document.getElementById('csvSemana');
+          botao.hidden = !semanaMostrada;
+          botao.textContent = t(semanaMostrada && semanaMostrada.modo === 'mes' ? 'baixarMes' : 'baixarSemana');
         }
+
+        // Relatório da semana, montado aqui no aparelho com os mesmos números da tela:
+        // um dia por linha (com o total), depois cada programa com grupo e foco.
+        function hms(s) {
+          s = Math.max(0, Math.round(s || 0));
+          function d2(n) { return String(n).padStart(2, '0'); }
+          return d2(Math.floor(s / 3600)) + ':' + d2(Math.floor(s % 3600 / 60)) + ':' + d2(s % 60);
+        }
+
+        function baixarSemana(ev) {
+          ev.preventDefault();
+          if (!semanaMostrada) return;
+          var x = semanaMostrada.dados, inicio = semanaMostrada.inicio, mes = semanaMostrada.modo === 'mes';
+          var fim = new Date(inicio.getFullYear(), inicio.getMonth(), inicio.getDate() + semanaMostrada.quantos - 1);
+          function campo(v) { v = String(v); return /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+          function linha(cols) { return cols.map(campo).join(';'); }
+          var nomeFoco = { p: t('produtivo'), d: t('distracao'), n: t('neutro') };
+          var l = [];
+          l.push(linha([t(mes ? 'cMes' : 'cSemana', iso(inicio), iso(fim))]));
+          l.push(linha([t('cResumo'), frasePartes(x).replace(/<[^>]+>/g, '')]));
+          l.push('');
+          l.push(linha([t('cDia'), t('cLigado'), t('cUso'), t('cProdutivo'), t('cDistracao'), t('cNeutro'), t('cParado')]));
+          x.dias.forEach(function (d) {
+            l.push(linha([d.data, hms(d.total), hms(d.uso), hms(d.p), hms(d.d), hms(d.n), hms(d.s)]));
+          });
+          l.push(linha([t(mes ? 'cTotalMes' : 'cTotal'), hms(x.total), hms(x.uso), hms(x.p), hms(x.d), hms(x.n), hms(x.s)]));
+          l.push('');
+          l.push(linha([t('cPrograma'), t('cGrupo'), t('cFoco'), t('cTempo'), t('cSegundos')]));
+          x.apps.forEach(function (a) {
+            l.push(linha([a.nome, mapaGrupos[a.nome] || '', nomeFoco[focoDe(a.nome)], hms(a.segundos), a.segundos]));
+          });
+          // BOM + CRLF: o Excel abre com acentos e colunas certas.
+          var blob = new Blob(['\ufeff' + l.join('\r\n') + '\r\n'], { type: 'text/csv;charset=utf-8' });
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = mes ? t('arqMes', iso(inicio).slice(0, 7)) : t('arqSemana', iso(inicio));
+          document.body.appendChild(a);
+          a.click();
+          setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+        }
+        document.getElementById('csvSemana').addEventListener('click', baixarSemana);
 
         function desenhar(res, hist, dia, appDados) {
           var detalhe = !!pcAtual;
@@ -1502,13 +2003,17 @@ class ServidorApi : IDisposable
             var usados = appHist.filter(function (d) { return d.data >= inicio14; }).length;
 
             document.getElementById('appNome').textContent = appDados.nome;
-            document.getElementById('appGrupo').textContent = appDados.grupo || '';
+            var focoApp = mapaFoco[appDados.grupo || ''];
+            document.getElementById('appGrupo').textContent = (appDados.grupo || '') +
+              (focoApp ? ' · ' + t(focoApp === 'produtivo' ? 'produtivo' : 'distracao') : '');
             document.getElementById('hoje').innerHTML = numero(deHoje ? deHoje.segundos : 0);
             document.getElementById('rotuloHoje').textContent = t('hoje');
             document.getElementById('data').textContent = rotuloDia(res.data);
             document.getElementById('periodo').textContent = usados ? t('usadoDias', usados) : t('semUso14');
             document.getElementById('secaoPcs').hidden = true;
             document.getElementById('secaoGrupos').hidden = true;
+            document.getElementById('secaoFoco').hidden = true;
+            document.getElementById('secaoSemana').hidden = true;
             document.getElementById('resumoPcs').textContent = '';
 
             desenharGrafico(appHist, null);
@@ -1532,6 +2037,7 @@ class ServidorApi : IDisposable
               desenharPcs(res.pcs);
             }
 
+            desenharFoco(dados.apps, dados.segundos, dados.parado);
             desenharGrupos(dados.apps);
             desenharApps(dados.apps, vendoDia);
             desenharHoras(dados.horas);
@@ -1539,14 +2045,21 @@ class ServidorApi : IDisposable
             desenharPeriodos(hist);
             desenharDias(hist, vendoDia);
             desenharBaixar();
+            if (vendoDia) document.getElementById('secaoSemana').hidden = true;
+            else desenharSemana();
           }
 
           if (vendoDia) {
             estado.textContent = t('historico');
             estado.className = '';
           } else {
-            estado.textContent = res.contando ? t('contando', res.atual || '—') : t('pausado');
-            estado.className = res.contando ? 'ativo' : '';
+            if (res.pausado) {
+              estado.textContent = res.pausaAte ? t('pausadoAte', res.pausaAte) : t('pausado');
+              estado.className = 'pausa';
+            } else {
+              estado.textContent = res.contando ? t('contando', res.atual || '—') : t('semUso');
+              estado.className = res.contando ? 'ativo' : '';
+            }
           }
 
           document.getElementById('rodape').textContent =
@@ -1612,7 +2125,11 @@ class ServidorApi : IDisposable
             }
 
             var rede = await buscar('/api/descobertos');
-            try { mapaGrupos = (await buscar('/api/grupos')).mapa || {}; } catch (e) { mapaGrupos = {}; }
+            try {
+              var gruposResp = await buscar('/api/grupos');
+              mapaGrupos = gruposResp.mapa || {};
+              mapaFoco = gruposResp.foco || {};
+            } catch (e) { mapaGrupos = {}; mapaFoco = {}; }
 
             caixa.style.display = 'none';
             painel.hidden = false;
