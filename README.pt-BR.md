@@ -11,16 +11,17 @@ O Time roda escondido no Windows e conta o tempo em que o computador está realm
 > A interface segue o idioma do Windows (na janela) e do celular (no painel): português quando o sistema está em português, inglês nos demais.
 
 <p>
-  <img src="docs/img/painel-hoje.png" width="300" alt="Painel do Time: tempo de hoje, programas e gráfico dos últimos 14 dias">
-  <img src="docs/img/painel-dia.png" width="300" alt="Detalhe de um dia anterior, com o gráfico marcado e todos os programas">
-  <img src="docs/img/painel-programa.png" width="300" alt="Detalhe de um programa no tema claro: hoje, 14 dias, semana e mês">
+  <img src="docs/img/painel-hoje.png" width="200" alt="Painel do Time: tempo de hoje e o resumo do dia (produtivo, distração, neutro e sem uso)">
+  <img src="docs/img/painel-semana.png" width="200" alt="Resumo da semana: a frase da semana, uma barra por dia e os destaques">
+  <img src="docs/img/painel-dia.png" width="200" alt="Detalhe de um dia anterior, com o resumo e todos os programas">
+  <img src="docs/img/painel-programa.png" width="200" alt="Detalhe de um programa no tema claro: hoje, 14 dias, semana e mês">
 </p>
 
 ## Por que o Time?
 
 Existem muitos programas de tempo de tela. O Time é para quem quer ver para onde vai o tempo **sem entregar esses dados para ninguém**:
 
-- **Nada sai da sua rede.** Sem conta, sem nuvem, sem telemetria. Os dados são arquivos CSV simples no seu próprio PC.
+- **Nada sai da sua rede.** Sem conta, sem nuvem de terceiros, sem telemetria. Os dados são arquivos CSV simples no seu próprio PC — e, só se você quiser, num servidor seu.
 - **O celular é o painel.** Abra um link na mesma rede Wi-Fi e veja o seu dia, sem instalar nada no celular.
 - **Vários PCs, um link só.** O PC de casa, o notebook e os PCs do escritório se acham na rede e aparecem somados num painel só.
 - **Não atrapalha.** Sem ícone na bandeja e sem janelas pulando na tela: roda escondido e só aparece quando você aperta o atalho.
@@ -40,6 +41,7 @@ Existem muitos programas de tempo de tela. O Time é para quem quer ver para ond
 - **Resumo da semana e do mês:** qualquer semana ou mês do histórico, com setas para voltar — a mesma frase para o período inteiro, uma barra por dia (ou por semana), a comparação com a semana anterior, o dia mais produtivo, o programa mais usado e a maior distração.
 - **Pausar:** um botão na janela para a contagem por 15 minutos, 1 hora ou até retomar — para um intervalo, ou quando outra pessoa vai usar o PC.
 - **Tempo parado:** conta também quanto tempo o PC ficou ligado sem ninguém usando ("Ligado sem uso"), separado do tempo de uso real.
+- **Servidor próprio (opcional):** veja o painel de qualquer lugar, com o histórico de todos os PCs mesmo desligados — veja [Servidor](#servidor-opcional).
 - **Firme com a rede instável:** se um PC para de responder, o painel mantém os últimos dados dele e marca como offline, então o total não cai e volta. PC em duas redes mostra um link para cada.
 - **Detalhe de um programa:** toque num programa para ver o histórico dele — hoje, 14 dias, semana e mês.
 - **Tema claro e escuro:** segue o celular, com um botão para trocar.
@@ -74,6 +76,27 @@ ele se instala por cima.
 
 Como o `.exe` não tem assinatura digital, o Windows pode avisar "O Windows protegeu o computador" na primeira vez: **Mais informações → Executar assim mesmo**. Se o celular não abrir, quase sempre é uma regra de **bloqueio** de firewall criada ao cancelar aquele aviso do Windows — veja o [manual](docs/manual.md).
 
+## Servidor (opcional)
+
+Por padrão nada sai da sua rede. Se quiser abrir o painel **de qualquer lugar** (dados móveis, outro Wi-Fi) e continuar vendo o histórico de um PC mesmo com ele desligado, dá para subir um servidorzinho **seu** na Cloudflare — grátis nesse volume, na sua própria conta. Cada PC manda o resumo do dia a cada minuto; se a internet cair, ele continua contando e manda tudo quando ela voltar.
+
+**Guia completo, com manutenção e problemas comuns: [docs/servidor.md](docs/servidor.md).** Em resumo — precisa do [Node.js](https://nodejs.org) (LTS) e de uma conta grátis na Cloudflare. Na pasta `servidor`:
+
+```powershell
+copy wrangler.exemplo.toml wrangler.toml
+npm install
+npx wrangler login                    # abre o navegador para autorizar a sua conta
+npx wrangler d1 create time           # copie o database_id que aparecer para o wrangler.toml
+npm run banco                         # cria as tabelas
+npx wrangler secret put CHAVE_ENVIO   # a chave de envio que os PCs vão usar (capriche no tamanho)
+npx wrangler secret put CODIGO        # o código para abrir o painel
+npm run deploy
+```
+
+Ele publica em `https://time.<sua-conta>.workers.dev`. Com um domínio na Cloudflare dá para usar um endereço seu: tire o `#` da linha `routes` no `wrangler.toml` (ex.: `time.seudominio.com`) e rode `npm run deploy` de novo. Ajuste o `FUSO` no `wrangler.toml` para o seu fuso horário.
+
+Depois, na janela do Time de cada PC: **Configurar** → endereço do servidor e chave de envio → OK. A caixa **Enviar para o servidor** fica marcada e a linha de baixo mostra o último envio. No celular, abra o endereço e digite o `CODIGO`.
+
 ## Compilar
 
 Precisa do [.NET 10 SDK](https://dotnet.microsoft.com/download) no Windows.
@@ -95,8 +118,10 @@ A cada push na `main`, o GitHub Actions também compila e deixa o `Time.exe` par
 |---|---|
 | `Program.cs` | ponto de entrada: instância única e instalação em Program Files |
 | `Contador.cs` | contagem do tempo, janelas e iniciar com o Windows |
-| `Contador.*.cs` | as outras partes do contador: link do painel e firewall (`Painel`), PCs remotos (`Remotos`), dados do painel e CSV (`Api`), regras e foco (`Regras`), pausa (`Pausa`), arquivos de dados (`Dados`) |
-| `Janelas.cs` | a janela completa e a janela mínima |
+| `Contador.*.cs` | as outras partes do contador: link do painel e firewall (`Painel`), envio para o servidor (`Servidor`), PCs remotos (`Remotos`), dados do painel e CSV (`Api`), regras e foco (`Regras`), pausa (`Pausa`), arquivos de dados (`Dados`) |
+| `Janelas.cs` | a janela completa, a janela mínima e a janela de configurar o servidor |
+| `servidor/` | o servidor opcional (Cloudflare Worker + D1): recebimento, banco e o mesmo painel |
+| `docs/servidor.md` | guia do servidor (também em [inglês](docs/servidor.en.md) e [chinês](docs/servidor.zh-CN.md)) |
 | `Modelos.cs`, `AtalhoGlobal.cs`, `Idioma.cs` | tipos de dados, atalho global, textos em português/inglês |
 | `Api.cs` | servidor HTTP e toda a página do painel (HTML/CSS/JS embutidos) |
 | `Descoberta.cs` | descoberta dos outros PCs na rede (UDP 8788, HMAC) |
@@ -131,7 +156,7 @@ programa: CorelDRW = CorelDRAW       # começo do nome do processo (sem .exe)
 titulo: Nota fiscal = Notas          # título de qualquer janela
 ```
 
-Uma linha `[Grupo]` agrupa as regras de baixo, e a marca opcional alimenta a barra de foco:
+Uma linha `[Grupo]` agrupa as regras de baixo, e a marca opcional diz se o grupo é produtivo ou distração nos resumos:
 
 ```text
 [Trabalho | produtivo]
@@ -145,7 +170,7 @@ A primeira regra que bater vence; o que não bater em nenhuma conta como **"Outr
 
 ## Privacidade
 
-- O programa não envia nada para fora: o painel só responde na rede local.
+- O programa não envia nada para fora: o painel só responde na rede local. A única exceção é o servidor opcional, que você mesmo cria na sua conta — os PCs mandam para ele os resumos dos dias (nomes dos programas e tempos, nunca títulos de janela) por HTTPS, com a chave de envio.
 - O painel exige o código de acesso; sem ele, a API responde `401`.
 - A descoberta entre PCs não manda o código, nem em forma de hash: o aviso leva só o nome da máquina e a porta, e o outro PC é confirmado com um desafio HMAC.
 - O painel é HTTP simples: dentro da rede, o código vai no endereço (`?k=`) sem criptografia. Use em redes que você confia e não exponha a porta na internet.
@@ -156,7 +181,7 @@ A primeira regra que bater vence; o que não bater em nenhuma conta como **"Outr
 
 - Só Windows (WinForms + APIs do Windows).
 - O painel precisa do PC ligado, do Time rodando e do celular na mesma rede.
-- Fora da rede ele não abre. Nunca abra a porta no roteador.
+- Fora da rede ele só abre pelo servidor opcional. Nunca abra a porta no roteador.
 - Sem instalador e sem assinatura digital.
 
 ## Licença

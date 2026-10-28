@@ -1,10 +1,22 @@
 # Mudanças
 
+## 1.2.0 (2026-10-27)
+
+### Servidor próprio (opcional)
+- Pasta `servidor/`: um servidor para a sua conta da Cloudflare (Worker + D1, grátis nesse volume), com o passo a passo no README.
+- Janela: **Enviar para o servidor** e **Configurar** (endereço e chave de envio). A cada minuto o PC manda os dias que mudaram; sem internet, continua contando e manda tudo quando a conexão volta. Sempre o total do dia: reenviar nunca soma em dobro.
+- O servidor mostra o mesmo painel, aberto de qualquer lugar com o código de leitura, com todos os PCs que enviam — e o histórico de cada um mesmo com ele desligado.
+- Guia do servidor em `docs/servidor.md` (também em inglês e chinês): criação, ligar nos PCs, manutenção, backup e problemas comuns.
+
+### Projeto
+- As notas de cada release no GitHub saem da seção da versão no `CHANGELOG.md`.
+- Imagens do README atualizadas, com o resumo da semana.
+
 ## 1.1.0 (2026-10-27)
 
 ### Foco
 - Grupos marcados como produtivo ou distração no `categorias.txt`: `[Trabalho | produtivo]`, `[Redes sociais | distração]`. As regras padrão já vêm marcadas.
-- Painel: barra de foco com o tempo e a porcentagem de produtivo, distração e neutro; as barras dos grupos seguem a mesma cor.
+- Painel: o tempo produtivo, de distração e neutro entra no "Resumo do dia"; as barras dos grupos seguem a mesma cor.
 - Janela: linha "Produtivo · Distração" com o tempo de hoje.
 
 ### Resumo do dia, da semana e do mês

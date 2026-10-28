@@ -37,7 +37,7 @@ body:
     id: version
     attributes:
       label: Time version
-      placeholder: "e.g. 1.1.0 (Time.exe → Properties → Details)"
+      placeholder: "e.g. 1.2.0 (Time.exe → Properties → Details)"
   - type: input
     id: windows
     attributes:

@@ -27,6 +27,9 @@ class Janela : Form
     public readonly Label ProgTempos = new();
     public readonly Label Historico = new();
     public readonly CheckBox IniciarComWindows;
+    public readonly CheckBox Servidor;
+    public readonly Button ConfigurarServidor;
+    public readonly Label StatusServidor;
     public readonly CheckBox Celular;
     public readonly TextBox Link;
     public readonly Button CopiarLink;
@@ -54,7 +57,7 @@ class Janela : Form
         StartPosition = FormStartPosition.Manual;
         ShowInTaskbar = true;             // só enquanto a janela está aberta
         TopMost = true;
-        ClientSize = new Size(300, 552);
+        ClientSize = new Size(300, 598);
         Font = new Font("Segoe UI", 9f);
         BackColor = Color.White;
 
@@ -88,42 +91,61 @@ class Janela : Form
         AbrirPasta = new Button { Text = L.T("Pasta dos dados", "Data folder"), Left = 16, Top = 416, Width = 130, Height = 26 };
         EditarCategorias = new Button { Text = L.T("Categorias", "Categories"), Left = 154, Top = 416, Width = 130, Height = 26 };
 
+        // Servidor (opcional): envia os dados para um servidor próprio, para ver de qualquer lugar.
+        Servidor = new CheckBox
+        {
+            Text = L.T("Enviar para o servidor", "Send to the server"), Left = 14, Top = 448,
+            Width = 190, Height = 22, AutoSize = false
+        };
+
+        ConfigurarServidor = new Button
+        {
+            Text = L.T("Configurar", "Set up"), Left = 212, Top = 446, Width = 72, Height = 24,
+            Font = new Font("Segoe UI", 8f)
+        };
+
+        StatusServidor = new Label
+        {
+            Left = 32, Top = 472, Width = 252, Height = 16,
+            ForeColor = Color.Gray, Font = new Font("Segoe UI", 7.5f), AutoEllipsis = true
+        };
+
         Celular = new CheckBox
         {
-            Text = L.T("Acessar pelo celular (rede local)", "Phone access (local network)"), Left = 14, Top = 448,
+            Text = L.T("Acessar pelo celular (rede local)", "Phone access (local network)"), Left = 14, Top = 494,
             Width = 270, Height = 22, AutoSize = false
         };
 
         Link = new TextBox
-        {
-            Left = 16, Top = 474, Width = 190, Height = 22,
-            ReadOnly = true, Visible = false,
-            Font = new Font("Segoe UI", 7f)
-        };
-
-        CopiarLink = new Button
-        {
-            Text = L.T("Copiar", "Copy"), Left = 212, Top = 472, Width = 72, Height = 24,
-            Visible = false, Font = new Font("Segoe UI", 8f)
-        };
-
-        // Segundo link: só aparece quando o PC está ligado em duas redes (cabo e Wi-Fi, por exemplo).
-        TituloLink2 = new Label
-        {
-            Left = 16, Top = 502, Width = 268, Height = 16, Visible = false,
-            ForeColor = Color.Gray, Font = new Font("Segoe UI", 7.5f)
-        };
-
-        Link2 = new TextBox
         {
             Left = 16, Top = 520, Width = 190, Height = 22,
             ReadOnly = true, Visible = false,
             Font = new Font("Segoe UI", 7f)
         };
 
-        CopiarLink2 = new Button
+        CopiarLink = new Button
         {
             Text = L.T("Copiar", "Copy"), Left = 212, Top = 518, Width = 72, Height = 24,
+            Visible = false, Font = new Font("Segoe UI", 8f)
+        };
+
+        // Segundo link: só aparece quando o PC está ligado em duas redes (cabo e Wi-Fi, por exemplo).
+        TituloLink2 = new Label
+        {
+            Left = 16, Top = 548, Width = 268, Height = 16, Visible = false,
+            ForeColor = Color.Gray, Font = new Font("Segoe UI", 7.5f)
+        };
+
+        Link2 = new TextBox
+        {
+            Left = 16, Top = 566, Width = 190, Height = 22,
+            ReadOnly = true, Visible = false,
+            Font = new Font("Segoe UI", 7f)
+        };
+
+        CopiarLink2 = new Button
+        {
+            Text = L.T("Copiar", "Copy"), Left = 212, Top = 564, Width = 72, Height = 24,
             Visible = false, Font = new Font("Segoe UI", 8f)
         };
 
@@ -131,20 +153,21 @@ class Janela : Form
         {
             Text = L.T("Ctrl+Shift+Alt+X e depois 5 - abre e fecha a janela.\nCtrl+Shift+Alt+F2 e depois 1 - mostra estas informações.",
                        "Ctrl+Shift+Alt+X, then 5 - opens and hides the window.\nCtrl+Shift+Alt+F2, then 1 - shows this information."),
-            Left = 16, Top = 498, Width = 268, Height = 30,
+            Left = 16, Top = 544, Width = 268, Height = 30,
             ForeColor = Color.Gray, Font = new Font("Segoe UI", 7.5f)
         };
 
         credito = new Label
         {
-            Text = "by Daniel 'dnyaary' Carvalho", Left = 16, Top = 532, AutoSize = true,
+            Text = "by Daniel 'dnyaary' Carvalho", Left = 16, Top = 578, AutoSize = true,
             ForeColor = Color.Silver, Font = new Font("Segoe UI", 7.5f)
         };
 
         Controls.AddRange(new Control[]
         {
             titulo, Hoje, Pausar, Status, Periodo, Foco, Parado, tituloProg, ProgNomes, ProgTempos, tituloHist, Historico,
-            linha, IniciarComWindows, AbrirPasta, EditarCategorias, Celular, Link, CopiarLink,
+            linha, IniciarComWindows, AbrirPasta, EditarCategorias, Servidor, ConfigurarServidor, StatusServidor,
+            Celular, Link, CopiarLink,
             TituloLink2, Link2, CopiarLink2, atalho, credito
         });
     }
@@ -167,6 +190,49 @@ class Janela : Form
     {
         base.OnFormClosed(e);
         Fechou?.Invoke();
+    }
+}
+
+// Endereço e chave de envio do servidor (o botão "Configurar" da janela).
+class JanelaServidor : Form
+{
+    public readonly TextBox Endereco = new();
+    public readonly TextBox Chave = new();
+
+    public JanelaServidor(string endereco, string chave)
+    {
+        Text = L.T("Time — servidor", "Time — server");
+        Icon = SystemIcons.Application;
+        FormBorderStyle = FormBorderStyle.FixedDialog;
+        MaximizeBox = false;
+        MinimizeBox = false;
+        StartPosition = FormStartPosition.CenterScreen;
+        ShowInTaskbar = false;
+        TopMost = true;
+        ClientSize = new Size(360, 214);
+        Font = new Font("Segoe UI", 9f);
+        BackColor = Color.White;
+
+        var explica = new Label
+        {
+            Text = L.T("O Time envia o resumo de cada dia para o seu servidor. Assim o painel abre de qualquer lugar e mostra todos os PCs, mesmo desligados.",
+                       "Time sends each day's summary to your server. The dashboard then opens from anywhere and shows every PC, even when they are off."),
+            Left = 16, Top = 12, Width = 328, Height = 46, ForeColor = Color.DimGray
+        };
+        var rotuloEndereco = new Label { Text = L.T("Endereço do servidor", "Server address"), Left = 16, Top = 64, AutoSize = true };
+        Endereco.SetBounds(16, 84, 328, 24);
+        Endereco.Text = endereco.Length > 0 ? endereco : "https://";
+        var rotuloChave = new Label { Text = L.T("Chave de envio", "Upload key"), Left = 16, Top = 116, AutoSize = true };
+        Chave.SetBounds(16, 136, 328, 24);
+        Chave.Text = chave;
+        Chave.UseSystemPasswordChar = true;
+
+        var ok = new Button { Text = "OK", Left = 188, Top = 174, Width = 76, Height = 28, DialogResult = DialogResult.OK };
+        var cancelar = new Button { Text = L.T("Cancelar", "Cancel"), Left = 268, Top = 174, Width = 76, Height = 28, DialogResult = DialogResult.Cancel };
+        AcceptButton = ok;
+        CancelButton = cancelar;
+
+        Controls.AddRange(new Control[] { explica, rotuloEndereco, Endereco, rotuloChave, Chave, ok, cancelar });
     }
 }
 

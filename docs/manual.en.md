@@ -151,8 +151,8 @@ new group right away.
 **Focus: productive or distraction (optional):**
 
 At the end of the group name, `| productive` or `| distraction` says what that
-time means to you. The dashboard shows the **Focus** bar (how much of the day was
-productive, distraction and neutral) and the window shows the line
+time means to you. The dashboard's **Day summary** splits the time into
+productive, distraction and neutral, and the window shows the line
 "Productive 5h 10min · Distraction 1h 20min".
 
 ```
@@ -277,6 +277,9 @@ before running the new `.exe` — it installs itself over the old one.
   - **Data folder**: opens `C:\Program Files\Time` in Explorer.
   - **Categories**: opens `categorias.txt` in Notepad.
   - **Start with Windows**: turns automatic startup on/off.
+  - **Send to the server** and **Set up**: send the data to your server, if you
+    have one (see [Server](#server-optional)). The line below shows the last upload
+    or why it didn't go through.
   - **Phone access**: turns on the local network
     dashboard and shows the link to copy (see [Phone dashboard](#phone-dashboard-local-network)).
 - **Opening `Time.exe` again** (double-click) doesn't create a second copy: it only
@@ -475,6 +478,33 @@ Network discovery doesn't send the code either, not even as a hash: the
 announcement only carries the machine name and port. When a PC's address changes,
 the dashboard confirms its identity with an HMAC challenge — without the code,
 nobody can pretend to be that PC.
+
+---
+
+## Server (optional)
+
+To see the dashboard away from the network (mobile data, another Wi-Fi) and keep
+seeing the history of a PC that's off, each PC can send its data to a server of
+your own, on your Cloudflare account. The step by step to create the server is in
+the [server guide](servidor.en.md); the code is in the `servidor/` folder.
+
+- **On each PC:** **Set up** → server address (e.g. `https://time.yourdomain.com`)
+  and the **upload key** → OK. The **Send to the server** box is ticked. Both are
+  stored in `config.txt` (`servidor`, `chave`, `enviar`).
+- **Uploading:** every minute, the PC sends the days that changed. The first time
+  (or after switching servers) it sends the whole history, in batches. It always
+  sends the day's total, so sending again only replaces — it never counts twice.
+- **No internet:** counting goes on normally on the PC. The line below shows "No
+  connection to the server" and everything is sent when the internet is back.
+- **On the phone:** open the server address and type the **read code** (the
+  `CODIGO` created on the server). It's the same dashboard, with every PC that
+  sends. A PC that stopped sending more than 2 minutes ago shows as offline, with
+  the data it already sent.
+- **Security:** the upload key can only send data; the read code can only view it.
+  Traffic goes over HTTPS. The server keeps the same as the CSVs: app names and
+  times, never window titles.
+
+The local network dashboard keeps working the same, with or without a server.
 
 ---
 

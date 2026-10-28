@@ -13,16 +13,17 @@ Time 在 Windows 后台隐藏运行，只统计电脑真正被使用的时间，
 > 界面语言跟随 Windows（窗口）和手机（仪表盘）的语言：系统为葡萄牙语时显示葡萄牙语，其他语言（包括中文）显示英语。
 
 <p>
-  <img src="docs/img/panel-today.png" width="300" alt="Time 仪表盘：今日时间、程序列表和最近 14 天的图表">
-  <img src="docs/img/panel-day.png" width="300" alt="某个往日的详情：图表上标出该日，并列出当天使用的所有程序">
-  <img src="docs/img/panel-app.png" width="300" alt="浅色主题下的程序详情：今天、最近 14 天、本周和本月">
+  <img src="docs/img/panel-today.png" width="200" alt="Time 仪表盘：今日时间和每日摘要（高效、分心、中性和空闲）">
+  <img src="docs/img/panel-week.png" width="200" alt="每周摘要：整周的总结句、每天一条进度条和亮点">
+  <img src="docs/img/panel-day.png" width="200" alt="某个往日的详情，包含当天的摘要和使用的所有程序">
+  <img src="docs/img/panel-app.png" width="200" alt="浅色主题下的程序详情：今天、最近 14 天、本周和本月">
 </p>
 
 ## 为什么选择 Time？
 
 屏幕时间统计软件有很多。Time 适合那些想知道时间花在哪里、**又不想把这些数据交给任何人**的用户：
 
-- **数据不出局域网。** 无需账号，不使用云端，没有遥测。数据只是保存在你自己电脑上的普通 CSV 文件。
+- **数据不出局域网。** 无需账号，不使用第三方云端，没有遥测。数据只是保存在你自己电脑上的普通 CSV 文件——如果你愿意，也可以放在你自己的服务器上。
 - **手机就是仪表盘。** 在同一 Wi-Fi 下打开一个链接即可查看你的一天，手机上无需安装任何东西。
 - **多台电脑，一个链接。** 家里的电脑、笔记本和办公室的电脑会在网络中自动互相发现，并汇总到同一个仪表盘中。
 - **不打扰你。** 没有托盘图标，也不会弹出窗口：它在后台隐藏运行，只有按下快捷键时才会出现。
@@ -42,6 +43,7 @@ Time 在 Windows 后台隐藏运行，只统计电脑真正被使用的时间，
 - **每周和每月摘要：** 历史中的任何一周或一个月，可用箭头向前翻——整个时间段的同样摘要、每天（或每周）一条进度条、与前一周的比较、最高效的一天、最常用的程序以及最大的分心来源。
 - **暂停：** 窗口中的按钮可以暂停计时 15 分钟、1 小时或直到你恢复——适合休息，或别人临时使用电脑时。
 - **空闲时间：** 另外统计电脑开着但无人使用的时间（"On but idle"），与真实使用时间分开。
+- **自己的服务器（可选）：** 在任何地方查看仪表盘，即使电脑关机也能看到所有电脑的历史记录——见[服务器](#服务器可选)。
 - **网络不稳定时依然可靠：** 如果某台电脑暂时没有响应，仪表盘会保留它最后发送的数据并标记为离线，总时长不会忽高忽低。连接两个网络的电脑会为每个网络各显示一个链接。
 - **程序详情：** 点击某个程序即可查看它的历史——今天、最近 14 天、本周和本月。
 - **浅色和深色主题：** 跟随手机设置，也可以用按钮切换。
@@ -74,6 +76,27 @@ Time 在 Windows 后台隐藏运行，只统计电脑真正被使用的时间，
 
 由于 `.exe` 没有数字签名，首次运行时 Windows 可能会提示"Windows 已保护你的电脑"：点击 **更多信息 → 仍要运行**。如果手机无法打开仪表盘，几乎都是因为取消了那个 Windows 防火墙提示，系统自动创建了一条**阻止**规则，详见[使用手册](docs/manual.zh-CN.md)。
 
+## 服务器（可选）
+
+默认情况下，数据不会离开你的网络。如果你想**在任何地方**（移动数据、其他 Wi-Fi）打开仪表盘，并且在电脑关机时也能看到它的历史记录，可以在 Cloudflare 上运行一个**你自己的**小服务器——在这种用量下免费，使用你自己的账号。每台电脑每分钟发送一次当天的摘要；如果网络中断，它会继续计时，并在网络恢复后补发全部数据。
+
+**完整的分步指南（包括维护和常见问题）：[docs/servidor.zh-CN.md](docs/servidor.zh-CN.md)。** 简要步骤——需要安装 [Node.js](https://nodejs.org)（LTS）并拥有一个免费的 Cloudflare 账号。在 `servidor` 文件夹中运行：
+
+```powershell
+copy wrangler.exemplo.toml wrangler.toml
+npm install
+npx wrangler login                    # 打开浏览器授权你的账号
+npx wrangler d1 create time           # 把显示的 database_id 复制到 wrangler.toml
+npm run banco                         # 创建数据表
+npx wrangler secret put CHAVE_ENVIO   # 各台电脑使用的上传密钥（尽量长一些）
+npx wrangler secret put CODIGO        # 打开仪表盘的访问码
+npm run deploy
+```
+
+它会发布到 `https://time.<你的账号>.workers.dev`。如果你的域名在 Cloudflare 上，也可以使用自己的地址：去掉 `wrangler.toml` 中 `routes` 一行前的 `#`（例如 `time.yourdomain.com`），然后再次运行 `npm run deploy`。请把 `wrangler.toml` 中的 `FUSO` 改为你的时区。
+
+然后，在每台电脑的 Time 窗口中：**"Set up"**（设置）→ 填写服务器地址和上传密钥 → OK。**"Send to the server"**（发送到服务器）会被勾选，下面一行显示最近一次上传。在手机上打开该地址并输入 `CODIGO`。
+
 ## 编译
 
 需要在 Windows 上安装 [.NET 10 SDK](https://dotnet.microsoft.com/download)。
@@ -95,8 +118,10 @@ dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=
 |---|---|
 | `Program.cs` | 程序入口：单实例运行，并自动安装到 Program Files |
 | `Contador.cs` | 计时、窗口和开机自动启动 |
-| `Contador.*.cs` | 计时器的其他部分：仪表盘链接和防火墙（`Painel`）、远程电脑（`Remotos`）、仪表盘数据和 CSV（`Api`）、规则和专注（`Regras`）、暂停（`Pausa`）、数据文件（`Dados`） |
-| `Janelas.cs` | 完整窗口和小窗口 |
+| `Contador.*.cs` | 计时器的其他部分：仪表盘链接和防火墙（`Painel`）、发送到服务器（`Servidor`）、远程电脑（`Remotos`）、仪表盘数据和 CSV（`Api`）、规则和专注（`Regras`）、暂停（`Pausa`）、数据文件（`Dados`） |
+| `Janelas.cs` | 完整窗口、小窗口和服务器设置窗口 |
+| `servidor/` | 可选的服务器（Cloudflare Worker + D1）：接收数据、存储以及相同的仪表盘 |
+| `docs/servidor.zh-CN.md` | 服务器指南（另有[英文版](docs/servidor.en.md)和[葡萄牙语版](docs/servidor.md)） |
 | `Modelos.cs`、`AtalhoGlobal.cs`、`Idioma.cs` | 数据类型、全局快捷键、葡萄牙语/英语文本 |
 | `Api.cs` | HTTP 服务器和完整的仪表盘页面（内嵌 HTML/CSS/JS） |
 | `Descoberta.cs` | 在网络中发现其他电脑（UDP 8788，HMAC） |
@@ -147,7 +172,7 @@ site: Instagram = Instagram
 
 ## 隐私
 
-- 程序不会向外部发送任何数据：仪表盘只在局域网内响应。
+- 程序不会向外部发送任何数据：仪表盘只在局域网内响应。唯一的例外是可选的服务器，它由你在自己的账号中创建——各台电脑通过 HTTPS 并使用上传密钥向它发送每日摘要（程序名称和时长，从不包含窗口标题）。
 - 仪表盘需要访问码；没有访问码时 API 返回 `401`。
 - 电脑之间的自动发现不会发送访问码，哪怕是哈希值也不会：广播只包含电脑名称和端口，并通过 HMAC 质询来验证另一台电脑。
 - 仪表盘使用普通 HTTP：在局域网内，访问码以未加密的形式出现在地址中（`?k=`）。请只在你信任的网络中使用，切勿把端口暴露到互联网。
@@ -158,7 +183,7 @@ site: Instagram = Instagram
 
 - 仅支持 Windows（WinForms + Windows API）。
 - 仪表盘需要电脑开机、Time 正在运行，并且手机在同一网络中。
-- 离开局域网后无法打开。切勿在路由器上开放端口。
+- 离开局域网后只能通过可选的服务器打开。切勿在路由器上开放端口。
 - 没有安装程序，也没有数字签名。
 
 ## 许可证

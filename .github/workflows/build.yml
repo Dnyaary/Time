@@ -37,7 +37,25 @@ jobs:
             publish/Time.exe
             publish/Time.exe.sha256
 
-      # Só roda quando o push é de uma tag v* (ex.: git tag v1.0.0 && git push origin v1.0.0)
+      # As notas da release vêm da seção da versão no CHANGELOG.md (ex.: "## 1.2.0").
+      - name: Notas da versão (do CHANGELOG.md)
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $versao = "${{ github.ref_name }}".TrimStart('v')
+          $dentro = $false
+          $notas = foreach ($linha in Get-Content CHANGELOG.md -Encoding UTF8) {
+            if ($linha -match '^## ') {
+              if ($dentro) { break }
+              $dentro = $linha.StartsWith("## $versao")
+              continue
+            }
+            if ($dentro) { $linha }
+          }
+          ($notas -join "`n").Trim() | Out-File -Encoding utf8 notas.md
+          Get-Content notas.md
+
+      # Só roda quando o push é de uma tag v* (ex.: git tag v1.2.0 && git push origin v1.2.0)
       - name: Criar release no GitHub
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
@@ -45,4 +63,4 @@ jobs:
           files: |
             publish/Time.exe
             publish/Time.exe.sha256
-          generate_release_notes: true
+          body_path: notas.md

@@ -2,4 +2,4 @@ blank_issues_enabled: true
 contact_links:
   - name: User manual
     url: https://github.com/Dnyaary/Time/blob/main/docs/manual.en.md
-    about: Install, phone dashboard, several PCs, VPN, firewall and common problems.
+    about: Install, phone dashboard, several PCs, server, firewall and common problems.

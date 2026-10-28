@@ -10,8 +10,8 @@
     <!-- Nome do executável gerado: Time.exe -->
     <AssemblyName>Time</AssemblyName>
 
-    <!-- Versão do programa (Propriedades > Detalhes). Suba junto com a tag da release: v1.1.0 -->
-    <Version>1.1.0</Version>
+    <!-- Versão do programa (Propriedades > Detalhes). Suba junto com a tag da release: v1.2.0 -->
+    <Version>1.2.0</Version>
 
     <!-- Ícone do .exe: o genérico do Windows, igual ao da janela -->
     <ApplicationIcon>icone.ico</ApplicationIcon>
@@ -26,5 +26,11 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <NeutralLanguage>pt-BR</NeutralLanguage>
   </PropertyGroup>
+
+  <!-- O servidor opcional (pasta servidor/) é JavaScript e não entra no .exe. -->
+  <ItemGroup>
+    <Compile Remove="servidor/**" />
+    <None Remove="servidor/**" />
+  </ItemGroup>
 
 </Project>

@@ -1,0 +1,20 @@
+# Time — servidor opcional
+# Copie este arquivo para wrangler.toml e ajuste. O wrangler.toml fica só no seu PC
+# (não vai para o Git). Passo a passo no README, seção "Servidor (opcional)".
+name = "time"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+# Endereço próprio (opcional): tire o # e troque pelo seu domínio na Cloudflare.
+# Sem esta linha, o servidor fica em https://time.<sua-conta>.workers.dev
+# routes = [{ pattern = "time.seudominio.com", custom_domain = true }]
+
+[vars]
+# Fuso usado para saber qual é o dia de "hoje" no painel.
+FUSO = "America/Sao_Paulo"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "time"
+# Troque pelo id que o comando "npx wrangler d1 create time" mostrar.
+database_id = "COLE-AQUI-O-ID-DO-BANCO"

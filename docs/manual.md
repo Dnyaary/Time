@@ -150,8 +150,8 @@ dias antigos no grupo novo.
 **Foco: produtivo ou distração (opcional):**
 
 No fim do nome do grupo, `| produtivo` ou `| distração` diz o que aquele tempo
-significa para você. O painel mostra a barra de **Foco** (quanto do dia foi
-produtivo, distração e neutro) e a janela mostra a linha
+significa para você. O **Resumo do dia** do painel separa o tempo em
+produtivo, distração e neutro, e a janela mostra a linha
 "Produtivo 5h 10min · Distração 1h 20min".
 
 ```
@@ -274,6 +274,9 @@ janela completa** antes de rodar o `.exe` novo — ele se instala por cima.
   - **Pasta dos dados:** abre `C:\Program Files\Time` no Explorador.
   - **Categorias:** abre o `categorias.txt` no Bloco de Notas.
   - **Iniciar com o Windows:** liga/desliga a inicialização automática.
+  - **Enviar para o servidor** e **Configurar:** mandam os dados para o seu
+    servidor, se você tiver um (veja [Servidor](#servidor-opcional)). A linha de
+    baixo mostra o último envio ou o motivo de não ter enviado.
   - **Acessar pelo celular:** liga o painel na rede local e mostra o link para
     copiar (veja a seção [Painel no celular](#painel-no-celular-rede-local)).
 - **Abrir o `Time.exe` de novo** (duplo clique) não cria uma segunda cópia:
@@ -466,6 +469,34 @@ A descoberta na rede também não manda o código, nem em forma de hash: o aviso
 leva só o nome da máquina e a porta. Quando o endereço de um PC muda, o painel
 confirma a identidade com um desafio respondido por HMAC — sem o código, ninguém
 consegue se passar por aquele PC.
+
+---
+
+## Servidor (opcional)
+
+Para ver o painel fora da rede (no 4G, em outro Wi-Fi) e continuar vendo o
+histórico de um PC desligado, cada PC pode mandar os dados para um servidor seu,
+na sua conta da Cloudflare. O passo a passo para criar o servidor está no
+[guia do servidor](servidor.md); o código fica na pasta `servidor/`.
+
+- **Em cada PC:** **Configurar** → endereço do servidor (ex.:
+  `https://time.seudominio.com`) e a **chave de envio** → OK. A caixa **Enviar para
+  o servidor** fica marcada. Os dois ficam no `config.txt` (`servidor`, `chave`,
+  `enviar`).
+- **Envio:** a cada minuto, o PC manda os dias que mudaram. Na primeira vez (ou ao
+  trocar de servidor) manda o histórico inteiro, em lotes. Ele manda sempre o total
+  do dia, então reenviar só substitui — nunca soma em dobro.
+- **Sem internet:** a contagem continua normal no PC. A linha de baixo mostra "Sem
+  conexão com o servidor" e, quando a internet volta, tudo é enviado.
+- **No celular:** abra o endereço do servidor e digite o **código de leitura** (o
+  `CODIGO` criado no servidor). É o mesmo painel, com todos os PCs que enviam. Um PC
+  que parou de enviar há mais de 2 minutos aparece como offline, com os dados que
+  já mandou.
+- **Segurança:** a chave de envio só serve para mandar dados; o código de leitura só
+  serve para ver. O tráfego vai por HTTPS. O servidor guarda o mesmo que os CSV: nome
+  dos programas e tempos, nunca o título das janelas.
+
+O painel da rede local continua funcionando igual, com ou sem servidor.
 
 ---
 

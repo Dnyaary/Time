@@ -1,0 +1,8 @@
+node_modules/
+.wrangler/
+.dev.vars
+# gerados a partir do Api.cs pelo gerar.js
+src/pagina.html
+src/manifesto.json.txt
+src/icone.svg.txt
+wrangler.toml

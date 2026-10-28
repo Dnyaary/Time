@@ -138,6 +138,9 @@ partial class Contador : ApplicationContext
             "Para de contar por um tempo, mesmo com o PC em uso.",
             "Stops counting for a while, even while the PC is in use."));
         NetworkChange.NetworkAddressChanged += (_, _) => redeMudou = true;
+        dicas.SetToolTip(janela.Servidor, L.T(
+            "Envia o resumo de cada dia para o seu servidor, para ver o painel de qualquer lugar.",
+            "Sends each day's summary to your server, to see the dashboard from anywhere."));
 
         // Se o painel estava ligado, sobe junto (sem UAC: a regra de firewall já foi criada antes).
         if (apiLigada && !AbrirApi())
@@ -152,6 +155,8 @@ partial class Contador : ApplicationContext
         }
 
         SystemEvents.SessionEnding += (_, _) => Salvar();
+
+        IniciarEnvio();
 
         // A contagem roda numa thread própria, então a janela nunca a trava.
         threadContagem = new Thread(Contar) { IsBackground = true };
@@ -455,6 +460,9 @@ partial class Contador : ApplicationContext
             janela.Periodo.Text = periodo;
             janela.Foco.Text = foco;
             janela.Parado.Text = parado;
+            janela.StatusServidor.Text = servidorLigado && ServidorConfigurado
+                ? (servidorStatus.Length > 0 ? servidorStatus : L.T("Enviando…", "Sending…"))
+                : "";
             janela.ProgNomes.Text = progNomes;
             janela.ProgTempos.Text = progTempos;
             janela.Historico.Text = historico;

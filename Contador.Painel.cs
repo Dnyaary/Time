@@ -74,6 +74,15 @@ partial class Contador
                         case "regraversao":
                             int.TryParse(valor, out regraVersao);
                             break;
+                        case "servidor":
+                            servidorUrl = valor.TrimEnd('/');
+                            break;
+                        case "chave":
+                            servidorChave = valor;
+                            break;
+                        case "enviar":
+                            servidorLigado = valor is "1" or "true" or "sim";
+                            break;
                     }
                 }
             }
@@ -99,6 +108,9 @@ partial class Contador
                 L.T("# firewall   porta TCP que o Windows já liberou (0 = nenhuma)", "# firewall   TCP port Windows has already opened (0 = none)"),
                 L.T("# firewalludp porta UDP da descoberta já liberada (0 = nenhuma)", "# firewalludp discovery UDP port already opened (0 = none)"),
                 L.T("# regraversao versão das regras de firewall (não precisa mexer)", "# regraversao firewall rules version (no need to change)"),
+                L.T("# servidor   endereço do servidor próprio (opcional), ex.: https://time.seudominio.com", "# servidor   address of your own server (optional), e.g. https://time.yourdomain.com"),
+                L.T("# chave      chave de envio do servidor", "# chave      server upload key"),
+                L.T("# enviar     1 = envia os dados para o servidor; 0 = não envia", "# enviar     1 = sends the data to the server; 0 = doesn't"),
                 "",
                 $"porta={portaApi}",
                 $"codigo={codigoApi}",
@@ -106,6 +118,9 @@ partial class Contador
                 $"firewall={firewallPorta}",
                 $"firewalludp={firewallUdp}",
                 $"regraversao={regraVersao}",
+                $"servidor={servidorUrl}",
+                $"chave={servidorChave}",
+                $"enviar={(servidorLigado ? 1 : 0)}",
                 ""
             };
             File.WriteAllLines(arquivoConfig, linhas, new UTF8Encoding(true));

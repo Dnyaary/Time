@@ -11,16 +11,17 @@ Time runs hidden on Windows and counts the time the computer is really in use �
 > The interface follows the language of Windows (the window) and of your phone (the dashboard): English, or Portuguese when that's the system language.
 
 <p>
-  <img src="docs/img/panel-today.png" width="300" alt="Time dashboard: today's time, apps and a chart of the last 14 days">
-  <img src="docs/img/panel-day.png" width="300" alt="Details of a previous day, with the day marked on the chart and every app used">
-  <img src="docs/img/panel-app.png" width="300" alt="Detail of one app in the light theme: today, last 14 days, week and month">
+  <img src="docs/img/panel-today.png" width="200" alt="Time dashboard: today's time and the day summary (productive, distraction, neutral and idle)">
+  <img src="docs/img/panel-week.png" width="200" alt="Week summary: the sentence for the week, one bar per day and the highlights">
+  <img src="docs/img/panel-day.png" width="200" alt="Details of a previous day, with its summary and every app used">
+  <img src="docs/img/panel-app.png" width="200" alt="Detail of one app in the light theme: today, last 14 days, week and month">
 </p>
 
 ## Why Time?
 
 There are many screen time trackers. Time is for people who want to see where their time goes **without handing that data to anyone**:
 
-- **Nothing leaves your network.** No account, no cloud, no telemetry. The data are plain CSV files on your own PC.
+- **Nothing leaves your network.** No account, no third-party cloud, no telemetry. The data are plain CSV files on your own PC — and, only if you want, on a server of your own.
 - **Your phone is the dashboard.** Open a link on the same Wi-Fi and see your day, without installing anything on the phone.
 - **Several PCs, one link.** Your desktop, laptop and office PCs find each other on the network and add up in a single dashboard.
 - **It stays out of the way.** No tray icon and no pop-ups: it runs hidden and only shows up when you press the shortcut.
@@ -40,6 +41,7 @@ There are many screen time trackers. Time is for people who want to see where th
 - **Week and month summary:** any week or month in the history, with arrows to go back — the same sentence for the whole period, one bar per day (or per week), the comparison with the week before, the most productive day, the most used app and the biggest distraction.
 - **Pause:** a button in the window stops counting for 15 minutes, 1 hour or until you resume — for a break, or when someone else uses the PC.
 - **Idle time:** also counts how long the PC stayed on with nobody using it ("On but idle"), separate from the real usage time.
+- **Your own server (optional):** see the dashboard from anywhere, with every PC's history even when it's off — see [Server](#server-optional).
 - **Steady with an unstable network:** if a PC stops responding, the dashboard keeps its last data and marks it offline, so the total doesn't drop and come back. A PC on two networks shows one link for each.
 - **App detail:** tap an app to see its history — today, last 14 days, week and month.
 - **Light and dark theme:** follows the phone, with a button to switch.
@@ -74,6 +76,27 @@ it installs itself over the old one.
 
 Since the `.exe` is not digitally signed, Windows may show "Windows protected your PC" the first time: **More info → Run anyway**. If the phone can't connect, it is almost always a firewall **block** rule created when that Windows prompt was cancelled — see the [manual](docs/manual.en.md).
 
+## Server (optional)
+
+By default nothing leaves your network. If you want to open the dashboard **from anywhere** (mobile data, another Wi-Fi) and keep seeing a PC's history even when it's off, you can run **your own** small server on Cloudflare — free for this volume, on your own account. Each PC sends its day summary every minute; if the internet drops, it keeps counting and sends everything when it's back.
+
+**Full step-by-step guide, with maintenance and troubleshooting: [docs/servidor.en.md](docs/servidor.en.md).** In short — you need [Node.js](https://nodejs.org) (LTS) and a free Cloudflare account. In the `servidor` folder:
+
+```powershell
+copy wrangler.exemplo.toml wrangler.toml
+npm install
+npx wrangler login                    # opens the browser to authorize your account
+npx wrangler d1 create time           # copy the database_id it shows into wrangler.toml
+npm run banco                         # creates the tables
+npx wrangler secret put CHAVE_ENVIO   # the upload key the PCs will use (make it long)
+npx wrangler secret put CODIGO        # the code to open the dashboard
+npm run deploy
+```
+
+It publishes to `https://time.<your-account>.workers.dev`. With a domain on Cloudflare you can use your own address: uncomment the `routes` line in your `wrangler.toml` (e.g. `time.yourdomain.com`) and run `npm run deploy` again. Set `FUSO` in `wrangler.toml` to your time zone.
+
+Then, in the Time window on each PC: **Set up** → server address and upload key → OK. The **Send to the server** box turns on and the line below it shows the last upload. Open the address on your phone and type the `CODIGO`.
+
 ## Building
 
 Requires the [.NET 10 SDK](https://dotnet.microsoft.com/download) on Windows.
@@ -95,8 +118,10 @@ On every push to `main`, GitHub Actions also builds it and makes `Time.exe` avai
 |---|---|
 | `Program.cs` | entry point: single instance and self-install to Program Files |
 | `Contador.cs` | time counting, windows and Start with Windows |
-| `Contador.*.cs` | the other parts of the counter: dashboard link and firewall (`Painel`), remote PCs (`Remotos`), dashboard data and CSV (`Api`), rules and focus (`Regras`), pause (`Pausa`), data files (`Dados`) |
-| `Janelas.cs` | the full window and the small window |
+| `Contador.*.cs` | the other parts of the counter: dashboard link and firewall (`Painel`), sending to the server (`Servidor`), remote PCs (`Remotos`), dashboard data and CSV (`Api`), rules and focus (`Regras`), pause (`Pausa`), data files (`Dados`) |
+| `Janelas.cs` | the full window, the small window and the server setup window |
+| `servidor/` | the optional server (Cloudflare Worker + D1): sending, storage and the same dashboard |
+| `docs/servidor.en.md` | server guide (also in [Portuguese](docs/servidor.md) and [Chinese](docs/servidor.zh-CN.md)) |
 | `Modelos.cs`, `AtalhoGlobal.cs`, `Idioma.cs` | data types, global shortcut, Portuguese/English text |
 | `Api.cs` | HTTP server and the whole dashboard page (embedded HTML/CSS/JS) |
 | `Descoberta.cs` | discovery of other PCs on the network (UDP 8788, HMAC) |
@@ -133,7 +158,7 @@ program: CorelDRW = CorelDRAW        # start of the process name (without .exe)
 title: Invoice = Invoices            # title of any window
 ```
 
-Group rules with a `[Group]` line, and optionally mark the group for the focus bar:
+Group rules with a `[Group]` line, and optionally mark the group as productive or distraction for the summaries:
 
 ```text
 [Work | productive]
@@ -147,7 +172,7 @@ The Portuguese keywords `programa:`, `titulo:`, `produtivo` and `distração` wo
 
 ## Privacy
 
-- The app sends nothing outside: the dashboard only answers on the local network.
+- The app sends nothing outside: the dashboard only answers on the local network. The only exception is the optional server, which you set up on your own account — the PCs send it the day summaries (app names and times, never window titles) over HTTPS with the upload key.
 - The dashboard requires the access code; without it, the API returns `401`.
 - PC discovery does not send the code, not even as a hash: the announcement carries only the machine name and port, and the other PC is verified with an HMAC challenge.
 - The dashboard is plain HTTP: inside the network, the code travels in the address (`?k=`) without encryption. Use it on networks you trust and never expose the port to the internet.
@@ -158,7 +183,7 @@ The Portuguese keywords `programa:`, `titulo:`, `produtivo` and `distração` wo
 
 - Windows only (WinForms + Windows APIs).
 - The dashboard needs the PC on, Time running and the phone on the same network.
-- Away from the network it does not open. Never open the port on the router.
+- Away from the network it only opens through the optional server. Never open the port on the router.
 - No installer and no digital signature.
 
 ## License

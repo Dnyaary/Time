@@ -1986,7 +1986,8 @@ class ServidorApi : IDisposable
           document.getElementById('btnVoltar').textContent = (vendoDia || vendoApp) ? t('voltar') : t('todosPcs');
           // A data do dia aberto já aparece na linha "Dia"; aqui fica só o nome do PC, se houver.
           document.getElementById('voltarNome').textContent = detalhe ? res.maquina : '';
-          document.getElementById('gerenciar').hidden = detalhe || vendoDia || vendoApp;
+          // No servidor os PCs entram sozinhos (cada um envia os dados): não há o que adicionar.
+          document.getElementById('gerenciar').hidden = detalhe || vendoDia || vendoApp || !!res.servidor;
           document.getElementById('secaoPeriodos').hidden = vendoDia;
           document.getElementById('secaoBaixar').hidden = vendoDia || vendoApp;
           document.getElementById('secaoApps').hidden = vendoApp;

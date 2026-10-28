@@ -1,0 +1,15 @@
+{
+  "name": "time-servidor",
+  "private": true,
+  "description": "Servidor opcional do Time (Cloudflare Worker + D1)",
+  "license": "MIT",
+  "scripts": {
+    "gerar": "node gerar.js",
+    "banco": "wrangler d1 execute time --remote --file=schema.sql",
+    "dev": "node gerar.js && wrangler d1 execute time --local --file=schema.sql && wrangler dev",
+    "deploy": "node gerar.js && wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
